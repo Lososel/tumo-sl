@@ -33,10 +33,17 @@
                  'ё': 'е', 'й': 'и', 'э': 'е' };
   const MIN_QUERY_LETTERS = 3;
 
+  // Latin letters that look like Cyrillic ones (lowercased). Typed by mistake inside Cyrillic
+  // names in the sheet: "Tөлеуғазы" (Latin T), "Iңкар" (Latin I). Only used for mixed words.
+  const LATIN_LOOKALIKE = { a: 'а', b: 'в', c: 'с', e: 'е', h: 'н', i: 'і', k: 'к', m: 'м', o: 'о',
+                            p: 'р', t: 'т', x: 'х', y: 'у' };
+  const CYRILLIC = /[\u0400-\u04ff]/;
+
   function words(text) {
     return (String(text == null ? '' : text).toLowerCase()
       .normalize('NFKD').replace(/[\u0300-\u036f]/g, '') // Latin diacritics; й/ё are folded below
-      .normalize('NFC').match(/[\p{L}\p{N}]+/gu) || []);
+      .normalize('NFC').match(/[\p{L}\p{N}]+/gu) || [])
+      .map(w => CYRILLIC.test(w) ? w.replace(/[abcehikmoptxy]/g, ch => LATIN_LOOKALIKE[ch]) : w);
   }
 
   const fold = w => w.replace(/[әғқңөұүһіёйэ]/g, ch => FOLD[ch]);

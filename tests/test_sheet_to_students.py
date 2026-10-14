@@ -81,6 +81,14 @@ class SheetToStudentsTest(unittest.TestCase):
         students, _ = sts.parse(sts.read_tables(csv_text.encode("utf-8")))
         self.assertEqual(students[0][:3], ["Дархан Аскаров", "Вторник", "16:30-18:30"])
 
+    def test_latin_lookalikes_in_cyrillic_names_are_fixed(self):
+        self.assertEqual(sts.fix_mixed_script("Tөлеуғазы Алдияр"), "Төлеуғазы Алдияр")
+        self.assertEqual(sts.fix_mixed_script("Iңкар Есiмхан Mади"), "Іңкар Есімхан Мади")
+        self.assertEqual(sts.fix_mixed_script("Agayeva Zakhirat"), "Agayeva Zakhirat")
+        raw = xlsx({"ПН ЧТ 1630": [HEADER, row("TӨЛЕУҒАЗЫ АЛДИЯР", "Четверг", "Nurai", "Elmira")]})
+        students, _ = sts.parse(sts.read_tables(raw))
+        self.assertEqual(students[0][0], "Төлеуғазы Алдияр")
+
     def test_html_login_page_is_rejected(self):
         with self.assertRaises(SystemExit):
             sts.read_tables(b"<!DOCTYPE html><html>Sign in</html>")

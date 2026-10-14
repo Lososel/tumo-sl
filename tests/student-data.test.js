@@ -116,3 +116,14 @@ test('search: whole-word matches first, results limited', () => {
   assert.strictEqual(res.total, 3);
   assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Алиев']);
 });
+
+test('search: Latin lookalike letters inside Cyrillic names still match', () => {
+  const recs = ['Tөлеуғазы Алдияр Қуандықұлы', 'Iңкар Киясова', 'Tұрсынбек Mади Мұратұлы', 'Agayeva Zakhirat']
+    .map(n => ({ n }));
+  const first = q => (S.searchStudents(recs, q).results[0] || {}).n;
+  assert.strictEqual(first('толеугазы алдияр'), 'Tөлеуғазы Алдияр Қуандықұлы'); // Latin T in the sheet
+  assert.strictEqual(first('Төлеуғазы'), 'Tөлеуғазы Алдияр Қуандықұлы');
+  assert.strictEqual(first('инкар'), 'Iңкар Киясова');                          // Latin I
+  assert.strictEqual(first('мади турсынбек'), 'Tұрсынбек Mади Мұратұлы');     // Latin T and M
+  assert.strictEqual(first('agayeva'), 'Agayeva Zakhirat');                     // Latin names untouched
+});
