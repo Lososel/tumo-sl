@@ -4,3 +4,4 @@ tools/
 *.xlsx
 *.csv
 *.bak
+tests/
