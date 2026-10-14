@@ -1,0 +1,18 @@
+# Render Blueprint: static site for the self-learning schedule page.
+# Connect it via Render dashboard → New → Blueprint → select this repo.
+# Every push to main redeploys; the page fetches data/students.json at runtime.
+services:
+  - type: web
+    name: tumo-learner-schedule
+    runtime: static
+    branch: main
+    # Publish only the public files (not tools/, tests/ or reports).
+    buildCommand: rm -rf public && mkdir public && cp -r index.html js data public/
+    staticPublishPath: ./public
+    headers:
+      - path: /data/*
+        name: Cache-Control
+        value: no-cache
+      - path: /js/*
+        name: Cache-Control
+        value: no-cache
