@@ -6,44 +6,48 @@
 <title>TUMO Astana — новое расписание SL</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+  /* Palette and type match the onboarding app (tumo-onb-app frontend/src/style.css). */
   :root{
-    --black:#1b1c1c;
-    --purple:#ca7ed4;
-    --purple-deep:#a855b8;
-    --purple-tint:#f5e7f8;
-    --purple-tint2:#efd9f3;
+    --black:#1f1f1f;          /* ink */
+    --purple:#c57fd6;         /* brand-400: lines, borders */
+    --purple-deep:#b25ec7;    /* brand-500: headings, links */
+    --purple-tint:#faf2fc;    /* brand-50 */
+    --purple-tint2:#f3e3f7;   /* brand-100 */
+    --purple-line:#e6c6ef;    /* brand-200 */
     --white:#ffffff;
-    --text:#232323;
-    --muted:#6f6f74;
-    --line:#e9e2eb;
-    --radius:16px;
+    --text:#334155;           /* slate-700 */
+    --muted:#64748b;          /* slate-500 */
+    --line:#f3e3f7;
+    --radius:24px;
+    --font:'Onest',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
     background:var(--white);
     color:var(--text);
-    font-family:'Manrope',-apple-system,'Segoe UI',Arial,sans-serif;
+    font-family:var(--font);
     font-size:16px;
-    line-height:1.55;
+    line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
   h1,h2,h3{
-    font-family:'Nunito','Manrope',sans-serif;
+    font-family:var(--font);
     font-weight:900;
     color:var(--black);
     margin:0;
-    letter-spacing:-0.01em;
   }
+  button,input{font-family:inherit;}
   a{color:inherit;}
 
   /* ---------- header ---------- */
   .topbar{
     background:#000000;
-    padding:16px clamp(16px,4vw,48px);
+    min-height:64px;
+    padding:12px clamp(16px,4vw,32px);
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -53,7 +57,6 @@
     display:flex;
     align-items:center;
     gap:10px;
-    font-family:'Nunito',sans-serif;
     font-weight:900;
     font-size:20px;
     color:var(--white);
@@ -74,22 +77,24 @@
   }
   .lang-switch{
     display:flex;
-    border:1.5px solid var(--white);
+    border:2px solid var(--white);
     border-radius:999px;
-    overflow:hidden;
+    padding:2px;
+    background:#000;
     flex-shrink:0;
   }
   .lang-switch button{
-    font-family:'Manrope',sans-serif;
-    font-weight:800;
-    font-size:12.5px;
-    letter-spacing:.03em;
+    font-weight:700;
+    font-size:12px;
     border:none;
+    border-radius:999px;
     background:transparent;
     color:var(--white);
-    padding:7px 14px;
+    padding:6px 14px;
     cursor:pointer;
+    transition:background .15s ease;
   }
+  .lang-switch button:not(.active):hover{background:rgba(255,255,255,.1);}
   .lang-switch button.active{
     background:var(--white);
     color:var(--black);
@@ -112,22 +117,26 @@
   .divider-heading::after{
     content:"";
     flex:1;
+    min-width:24px;
     height:2px;
     background:var(--purple);
-    border-radius:2px;
   }
   .divider-heading h1,
   .divider-heading h2{
-    font-size:clamp(22px,4vw,32px);
-    white-space:nowrap;
+    font-size:clamp(24px,4.5vw,40px);
+    line-height:1.25;
+    text-align:center;
+    text-wrap:balance;
     color:var(--purple-deep);
     min-width:0;
   }
   .lede{
     color:var(--text);
-    font-size:16.5px;
+    font-size:clamp(16px,2vw,18px);
+    line-height:1.625;
+    margin:0;
   }
-  .lede + .lede{margin-top:10px;}
+  .lede + .lede{margin-top:16px;}
 
   /* ---------- search ---------- */
   .search-block{
@@ -141,43 +150,45 @@
   .search-input{
     flex:1;
     min-width:0;
-    font-family:'Manrope',sans-serif;
-    font-size:17px;
-    font-weight:600;
-    padding:16px 20px;
-    border:2.5px solid var(--black);
+    font-size:clamp(16px,2vw,18px);
+    font-weight:400;
+    padding:clamp(14px,2vw,20px) clamp(20px,3vw,28px);
+    border:2px solid var(--purple);
     border-radius:999px;
     outline:none;
     background:var(--white);
-    color:var(--text);
-    transition:border-color .15s ease, box-shadow .15s ease;
+    color:var(--black);
+    box-shadow:0 0 0 4px var(--purple-tint2);
+    transition:border-color .15s ease;
   }
-  .search-input:focus{
-    border-color:var(--purple);
-    box-shadow:0 0 0 4px var(--purple-tint);
-  }
-  .btn-search{
+  .search-input::placeholder{color:#94a3b8;}
+  .search-input:focus{border-color:var(--purple-deep);}
+  .btn.btn-search{
     background:var(--black);
     color:var(--white);
-    border:2.5px solid var(--black);
-    padding:0 26px;
+    font-weight:700;
+    font-size:clamp(16px,2vw,18px);
+    padding:0 clamp(20px,3vw,36px);
     flex-shrink:0;
   }
-  .btn-search:hover{background:#000;}
+  .btn.btn-search:hover{background:#000;}
   .search-hint{
-    font-size:13.5px;
+    font-size:15px;
     color:var(--muted);
     margin-top:8px;
     padding:0 6px;
   }
   .no-results{
-    padding:14px 4px 0;
-    color:var(--muted);
-    font-size:14.5px;
+    border:2px dashed var(--purple-line);
+    background:var(--purple-tint);
+    border-radius:16px;
+    padding:16px 20px;
+    color:var(--text);
+    font-size:16px;
   }
   @media (max-width:480px){
     .search-row{flex-direction:column;}
-    .btn-search{padding:14px;}
+    .btn.btn-search{padding:14px;}
     .divider-heading{flex-direction:column;gap:8px;}
     .divider-heading::before,
     .divider-heading::after{display:none;}
@@ -194,73 +205,74 @@
   .card{
     border:2px solid var(--black);
     border-radius:var(--radius);
-    padding:22px 24px;
+    padding:clamp(20px,4vw,32px);
     background:var(--white);
     position:relative;
     animation:pop .25s ease;
   }
   @keyframes pop{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
   .card h3{
-    font-size:20px;
+    font-size:clamp(20px,3vw,24px);
+    line-height:1.375;
     color:var(--black);
-    margin-bottom:14px;
-    padding-right:90px;
+    margin-bottom:20px;
+    padding-right:170px;
   }
   .badge{
     position:absolute;
-    top:22px;right:22px;
-    font-size:11px;
+    top:clamp(20px,4vw,32px);right:clamp(20px,4vw,32px);
+    font-size:12px;
     font-weight:800;
     text-transform:uppercase;
-    letter-spacing:.03em;
-    padding:5px 10px;
+    letter-spacing:.025em;
+    padding:6px 14px;
     border-radius:999px;
     text-align:right;
   }
-  .badge.same{background:#eef4ea;color:#3f7a3d;}
-  .badge.changed{background:var(--purple-tint2);color:var(--purple-deep);}
+  .badge.same{background:#ecfdf5;color:#047857;}      /* emerald, as active_schedule */
+  .badge.changed{background:#f0f9ff;color:#0369a1;}   /* sky, as coach_changed */
+  .badge.unknown{background:#f1f5f9;color:#475569;}   /* slate, as schedule_pending */
   .facts{
     display:grid;
     grid-template-columns:1fr 1fr;
-    gap:14px 18px;
-    margin-bottom:14px;
+    gap:20px 32px;
+    margin-bottom:8px;
   }
   .fact-label{
-    font-size:11.5px;
+    font-size:12px;
     text-transform:uppercase;
     letter-spacing:.05em;
     color:var(--muted);
-    font-weight:800;
-    margin-bottom:3px;
+    font-weight:700;
+    margin-bottom:4px;
   }
   .fact-value{
-    font-size:17px;
-    font-weight:700;
+    font-size:18px;
+    font-weight:600;
     color:var(--black);
+    overflow-wrap:anywhere;
   }
-  .fact-value.name{
-    font-family:'Nunito',sans-serif;
-  }
+  .fact-value a{color:var(--purple-deep);font-weight:500;text-decoration:none;}
+  .fact-value a:hover{text-decoration:underline;}
   .note{
-    background:var(--purple-tint);
-    border-radius:10px;
-    padding:12px 14px;
-    font-size:14.5px;
-    color:#5a3a61;
-    margin-top:8px;
+    background:#f0f9ff;
+    border-radius:16px;
+    padding:14px 20px;
+    font-size:15.2px;
+    color:var(--text);
+    margin-top:16px;
   }
   .note.warn{background:#fbeee0;color:#7a4f1c;}
   .note.info{background:#eaf1fb;color:#2c4a6e;}
 
   .group-block{
-    margin-top:14px;
+    margin-top:24px;
     border:2px dashed var(--purple);
-    border-radius:14px;
-    padding:18px;
+    border-radius:16px;
+    padding:clamp(16px,2.5vw,20px);
     display:flex;
     align-items:center;
-    gap:18px;
-    font-family:'Manrope',sans-serif;
+    gap:24px;
   }
   .group-qr{
     flex-shrink:0;
@@ -277,12 +289,13 @@
     gap:8px;
   }
   .group-title{
-    font-size:14.5px;
-    font-weight:800;
+    font-size:18px;
+    line-height:1.375;
+    font-weight:900;
     color:var(--black);
   }
   .group-link{
-    font-size:13.5px;
+    font-size:15px;
     color:var(--purple-deep);
     word-break:break-all;
     text-decoration:none;
@@ -293,12 +306,12 @@
     align-items:center;
     justify-content:center;
     align-self:flex-start;
-    background:#25D366;
+    background:#5bc96f;
     color:#fff;
-    font-weight:800;
-    font-size:14px;
+    font-weight:700;
+    font-size:16px;
     text-decoration:none;
-    padding:10px 20px;
+    padding:10px 24px;
     border-radius:999px;
   }
   @media (max-width:520px){
@@ -347,7 +360,6 @@
     align-items:center;
     justify-content:center;
     gap:8px;
-    font-family:'Manrope',sans-serif;
     font-weight:800;
     font-size:14.5px;
     text-decoration:none;
@@ -437,12 +449,12 @@
       <div class="divider-heading"><h1 data-i18n="heroTitle">Проверить график обучения</h1></div>
       <p class="lede" data-i18n="lede1">В связи с началом учебного года в TUMO Astana поступили запросы на изменение графика обучения с учётом расписания учащихся в школах.</p>
       <p class="lede" data-i18n="lede2">Запросы на изменение графика обрабатываются в порядке их поступления. На данной платформе можно проверить статус заявки и актуальное расписание обучения.</p>
-      <p class="lede" data-i18n="lede3">Чтобы узнать день самообучения, время занятий и имя коуча, введите имя и фамилию учащегося полностью.</p>
+      <p class="lede" data-i18n="lede3">Чтобы узнать день самообучения, время занятий и имя коуча, введите имя и/или фамилию учащегося — достаточно первых трёх букв.</p>
     </div>
 
     <div class="search-block">
       <div class="search-row">
-        <input id="searchInput" class="search-input" type="text" placeholder="Фамилия Имя" autocomplete="off" inputmode="search">
+        <input id="searchInput" class="search-input" type="search" placeholder="Имя и фамилия учащегося..." autocomplete="off" autocapitalize="words" enterkeyhint="search" maxlength="120">
         <button id="searchBtn" class="btn btn-search" data-i18n="searchBtn">Найти</button>
       </div>
     </div>
@@ -539,11 +551,13 @@
       heroTitle:'Проверить график обучения',
       lede1:'В связи с началом учебного года в TUMO Astana поступили запросы на изменение графика обучения с учётом расписания учащихся в школах.',
       lede2:'Запросы на изменение графика обрабатываются в порядке их поступления. На данной платформе можно проверить статус заявки и актуальное расписание обучения.',
-      lede3:'Чтобы узнать день самообучения, время занятий и имя коуча, введите имя и фамилию учащегося полностью.',
+      lede3:'Чтобы узнать день самообучения, время занятий и имя коуча, введите имя и/или фамилию учащегося — достаточно первых трёх букв.',
       noResults:'Ничего не найдено — проверьте написание или напишите нам ниже.',
-      multiMatch:(n)=>`Найдено несколько учеников с этим именем (${n}) — выберите нужного по дню и времени занятий.`,
+      multiMatch:(n)=>`Найдено несколько учеников (${n}) — выберите нужного по имени, дню и времени занятий.`,
+      manyMatches:(n,shown)=>`Найдено учеников: ${n}, показаны первые ${shown}. Уточните запрос — добавьте фамилию или больше букв.`,
+      tooShort:'Введите хотя бы 3 буквы имени или фамилии.',
       searchBtn:'Найти',
-      searchPlaceholder:'Фамилия Имя',
+      searchPlaceholder:'Имя и фамилия учащегося...',
       factSchedule:'график обучения', factMainDay:'основной день самообучения', factCoach:'коуч', factCoachEmail:'email коуча', factStage:'этап обучения',
       factStudentEmail:'ПОЧТА TUMO ученика',
       comingSoon:'Скоро появится',
@@ -585,11 +599,13 @@
       heroTitle:'Оқу кестесін тексеру',
       lede1:'Оқу жылының басталуына байланысты TUMO Astana-ға мектептегі сабақ кестесін ескере отырып, оқу кестесін өзгерту туралы өтінімдер түсті.',
       lede2:'Кестені өзгерту өтінімдері түскен ретімен өңделеді. Осы платформада өтінімнің мәртебесін және оқудың ағымдағы кестесін тексере аласыз.',
-      lede3:'Өзіндік оқу күнін, сабақ уақытын және коучтың атын білу үшін оқушының аты-жөнін толығымен енгізіңіз.',
+      lede3:'Өзіндік оқу күнін, сабақ уақытын және коучтың атын білу үшін оқушының атын және/немесе тегін енгізіңіз — алғашқы үш әрпі жеткілікті.',
       noResults:'Ештеңе табылмады — жазылуын тексеріңіз немесе төменде бізге жазыңыз.',
-      multiMatch:(n)=>`Осы атпен бірнеше оқушы табылды (${n}) — күні мен уақыты бойынша керегін таңдаңыз.`,
+      multiMatch:(n)=>`Бірнеше оқушы табылды (${n}) — аты, күні мен уақыты бойынша керегін таңдаңыз.`,
+      manyMatches:(n,shown)=>`Табылған оқушылар: ${n}, алғашқы ${shown} көрсетілді. Сұрауды нақтылаңыз — тегін немесе көбірек әріп қосыңыз.`,
+      tooShort:'Аты немесе тегінің кемінде 3 әрпін енгізіңіз.',
       searchBtn:'Табу',
-      searchPlaceholder:'Тегі Аты',
+      searchPlaceholder:'Оқушының аты-жөні...',
       factSchedule:'оқу кестесі', factMainDay:'негізгі өзіндік оқу күні', factCoach:'коуч', factCoachEmail:'коучтың email-і', factStage:'оқу кезеңі',
       factStudentEmail:'Оқушының TUMO поштасы',
       comingSoon:'Жақында пайда болады',
@@ -631,15 +647,6 @@
 
   let currentLang = 'ru';
 
-  // Позволяет искать без специальных казахских букв: "Нурсана" находит "Нұрсана"
-  const KZ_MAP = {'ә':'а','ғ':'г','қ':'к','ң':'н','ө':'о','ұ':'у','ү':'у','һ':'х','і':'и'};
-  const norm = s => (s||'').toString().toLowerCase()
-    .replace(/ё/g,'е')
-    .replace(/й/g,'и')
-    .replace(/[әғқңөұүһі]/g, ch => KZ_MAP[ch])
-    .replace(/\s+/g,' ')
-    .trim();
-
   const escapeHtml = s => (s == null ? '' : String(s)).replace(/[&<>"']/g,
     ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
@@ -654,7 +661,7 @@
       dataState = 'ready';
       if(signature === dataSignature) return;
       dataSignature = signature;
-      DATA = records.map(r => Object.assign(r, { _n: norm(r.n) }));
+      DATA = records.map(r => Object.assign(r, { _t: StudentData.nameTokens(r.n) }));
       if(!lastQueryEmpty) runSearch(); // re-render with fresh data
     } catch (err) {
       console.error('Student data load failed:', err);
@@ -685,27 +692,20 @@
   }
   function t(key){ return I18N[currentLang][key]; }
 
-  // Совпадение по словам: каждое введённое слово должно точно совпасть с одним из слов
-  // в ФИО ученика (без учёта регистра, порядка и казахских букв). Отчество можно не писать.
-  function searchFullName(q){
-    const nq = norm(q);
-    if(!nq) return [];
-    const qTokens = nq.split(' ').filter(Boolean);
-    if(qTokens.length < 2) return []; // требуем минимум 2 слова — имя и фамилию
-    return DATA.filter(r => {
-      const nameTokens = r._n.split(' ').filter(Boolean);
-      return qTokens.every(tok => nameTokens.includes(tok));
-    });
-  }
+  // Search (js/student-data.js): each typed word, 3+ letters, matches the start of a different
+  // word of the name in any order; Kazakh/Russian letters and case are ignored.
+  // "Бат", "Ама" or "Бат Ама" all find "Батыржан Амангелдіұлы".
+  const MAX_SHOWN = 10;
 
   function runSearch(){
     const q = input.value;
     lastQueryEmpty = !q.trim();
     if(lastQueryEmpty){ results.innerHTML=''; lastRendered=[]; return; }
     if(dataState !== 'ready'){ lastRendered=[]; renderStatus(t(dataState === 'error' ? 'dataError' : 'dataLoading')); return; }
-    const matches = searchFullName(q);
-    lastRendered = matches;
-    renderResults(matches);
+    const found = StudentData.searchStudents(DATA, q, MAX_SHOWN);
+    lastRendered = found.results;
+    if(found.status === 'short'){ renderStatus(t('tooShort')); return; }
+    renderResults(found.results, found.total);
   }
 
   function renderStatus(text){
@@ -716,17 +716,17 @@
     results.appendChild(el);
   }
 
-  function renderResults(list){
+  function renderResults(list, total){
     results.innerHTML = '';
     if(list.length === 0){
       renderStatus(t('noResults'));
       return;
     }
-    if(list.length > 1){
+    if(total > list.length || list.length > 1){
       const hint = document.createElement('div');
       hint.className = 'search-hint';
       hint.style.marginBottom = '2px';
-      hint.textContent = t('multiMatch')(list.length);
+      hint.textContent = total > list.length ? t('manyMatches')(total, list.length) : t('multiMatch')(list.length);
       results.appendChild(hint);
     }
     list.forEach((r, index) => {
@@ -738,7 +738,7 @@
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        <span class="badge ${changed ? 'changed' : 'same'}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>
+        <span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>
         <h3>${escapeHtml(r.n)}</h3>
         <div class="facts">
           <div>
@@ -751,19 +751,19 @@
           </div>
           <div>
             <div class="fact-label">${t('factCoach')}</div>
-            <div class="fact-value name">${escapeHtml(r.c) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(r.c) || t('comingSoon')}</div>
           </div>
           <div>
             <div class="fact-label">${t('factCoachEmail')}</div>
-            <div class="fact-value" style="font-size:14px;">${email ? `<a href="mailto:${email}" style="color:var(--purple-deep);text-decoration:none;">${email}</a>` : t('comingSoon')}</div>
+            <div class="fact-value">${email ? `<a href="mailto:${email}">${email}</a>` : t('comingSoon')}</div>
           </div>
           <div>
             <div class="fact-label">${t('factStudentEmail')}</div>
-            <div class="fact-value" style="font-size:14px;">${r.email ? `<a href="mailto:${escapeHtml(r.email)}" style="color:var(--purple-deep);text-decoration:none;">${escapeHtml(r.email)}</a>` : t('comingSoon')}</div>
+            <div class="fact-value">${r.email ? `<a href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a>` : t('comingSoon')}</div>
           </div>
           <div>
             <div class="fact-label">${t('factStage')}</div>
-            <div class="fact-value" style="font-size:15px;">${escapeHtml(trStage(r.stage)) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(trStage(r.stage)) || t('comingSoon')}</div>
           </div>
         </div>
         ${noCoach
