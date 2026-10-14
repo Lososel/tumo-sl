@@ -1,0 +1,5 @@
+# Student data must never be served stale: browsers/CDN revalidate on every request.
+/data/*
+  Cache-Control: no-cache
+/js/*
+  Cache-Control: no-cache

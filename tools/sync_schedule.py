@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Sync student-data in index.html from the coach's schedule-changes xlsx.
+"""Sync data/students.json (the master student list the site fetches at runtime)
+from the coach's schedule-changes xlsx.
+
+index.html loads data/students.json on every visit and re-checks it periodically,
+so pushing an updated JSON file is enough: no edits to index.html are needed.
+Names (students and coaches) are stored in Title Case.
 
 Usage:
   python3 tools/sync_schedule.py path/to/file.xlsx            # dry-run (default)
@@ -16,10 +21,10 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-import openpyxl
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_HTML = REPO_ROOT / "index.html"
+STUDENTS_JSON = REPO_ROOT / "data" / "students.json"
+STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email"]
 REPORTS_DIR = REPO_ROOT / "reports"
 
 DAYS_OK = ["Понедельник", "Вторник", "Четверг", "Пятница"]
@@ -62,6 +67,13 @@ CANON_PRIMARY_COACH = {
     "alinur": "Alinur", "aruzhan": "Aruzhan", "nurai": "Nurai", "almas": "Almas",
     "elmira": "Elmira", "dariga": "Dariga",
 }
+
+
+def proper_case(s):
+    """'БАТЫРЖАН НҰРАЛИ АМАНГЕЛДІҰЛЫ' -> 'Батыржан Нұрали Амангелдіұлы'.
+    Mirrors properCase() in js/student-data.js: capital after start, space, '-', '(' or '+'."""
+    s = re.sub(r"\s+", " ", str(s or "")).strip().lower()
+    return re.sub(r"(^|[\s\-(+])([^\W\d_])", lambda m: m.group(1) + m.group(2).upper(), s)
 
 
 def norm(s):
@@ -110,10 +122,12 @@ def canon_ex_coach(raw):
     key = s.lower()
     if key in CYR_TO_LATIN_COACH:
         return CYR_TO_LATIN_COACH[key]
-    return s
+    return proper_case(s)
 
 
 def read_excel_rows(xlsx_path):
+    import openpyxl  # only needed when reading the xlsx
+
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     ws = wb["Sheet1"]
     rows = []
@@ -125,7 +139,7 @@ def read_excel_rows(xlsx_path):
         rows.append({
             "excel_row": i,
             "time_raw": time_,
-            "name": name_c,
+            "name": proper_case(name_c),
             "day": clean_ws(day),
             "ex_raw": ex,
             "new_raw": new,
@@ -171,13 +185,29 @@ def fmt_time(t):
     return None
 
 
-def load_student_data(html):
-    m = re.search(r'(<script id="student-data" type="application/json">)(.*?)(</script>)', html, re.S)
-    if not m:
-        raise RuntimeError("student-data script tag not found in index.html")
-    raw_json = m.group(2)
-    data = json.loads(raw_json)
-    return data, m.span(2)
+def load_student_data(path=None):
+    """Return the student rows [name, day, time, coach, exCoach, stage, email]."""
+    payload = json.loads(Path(path or STUDENTS_JSON).read_text(encoding="utf-8"))
+    rows = payload["students"] if isinstance(payload, dict) else payload
+    return [list(r) + [""] * (len(STUDENT_FIELDS) - len(r)) for r in rows]
+
+
+def save_student_data(data, path=None):
+    """Write rows to data/students.json with names in Title Case, one student per line."""
+    rows = []
+    for r in data:
+        r = list(r) + [""] * (len(STUDENT_FIELDS) - len(r))
+        r[0], r[3], r[4] = proper_case(r[0]), proper_case(r[3]), proper_case(r[4])
+        rows.append(r)
+    body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
+    text = (
+        '{"fields":' + json.dumps(STUDENT_FIELDS) + ',\n'
+        '"updated":' + json.dumps(datetime.date.today().isoformat()) + ',\n'
+        '"students":[\n' + body + "\n]}\n"
+    )
+    out = Path(path or STUDENTS_JSON)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
 
 
 def build_indexes(data):
@@ -199,7 +229,7 @@ def find_internal_dupes(data, norm_to_indices):
         if len(idxs) > 1:
             problems.append({
                 "excel_row": "",
-                "reason": "дубль ФИО в student-data (index.html)",
+                "reason": "дубль ФИО в data/students.json",
                 "candidates": " | ".join(f"[{i}] {data[i][0]}" for i in idxs),
                 "name": data[idxs[0]][0],
             })
@@ -236,7 +266,7 @@ def match_student(excel_name, norm_to_indices, tokens_to_indices, data_tokens):
 def process(xlsx_path, verbose_examples=10):
     html = INDEX_HTML.read_text(encoding="utf-8")
     coach_emails = load_coach_emails(html)
-    data, _ = load_student_data(html)
+    data = load_student_data()
     norm_to_indices, tokens_to_indices, data_tokens = build_indexes(data)
 
     dup_name_problems = find_internal_dupes(data, norm_to_indices)
@@ -427,7 +457,6 @@ def print_summary(result, examples=10):
 
 
 def apply_changes(result):
-    html = INDEX_HTML.read_text(encoding="utf-8")
     data = result["data"]
 
     field_name_to_idx = {v: k for k, v in FIELD_LABELS.items()}
@@ -442,31 +471,23 @@ def apply_changes(result):
             field_idx = field_name_to_idx[c["field"]]
             data[idx][field_idx] = c["new"]
 
-    for rec in data:
-        for v in rec:
-            if isinstance(v, str) and "</script" in v.lower():
-                raise RuntimeError(f"Unsafe value contains </script: {v!r}")
-
-    new_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    m = re.search(r'(<script id="student-data" type="application/json">)(.*?)(</script>)', html, re.S)
-    new_html = html[:m.start(2)] + new_json + html[m.end(2):]
-    INDEX_HTML.write_text(new_html, encoding="utf-8")
+    save_student_data(data)
 
     # Post-write verification
-    verify_data, _ = load_student_data(INDEX_HTML.read_text(encoding="utf-8"))
+    verify_data = load_student_data()
     assert len(verify_data) == len(data), "record count changed unexpectedly"
     for rec in verify_data:
         assert rec[1] in DAYS_OK, f"bad day after apply: {rec}"
         assert rec[2] in TIMES_OK, f"bad time after apply: {rec}"
         assert rec[3].lower() in result["coach_emails"], f"bad coach after apply: {rec}"
     print(f"Applied {len(result['diffs'])} field changes across {len(by_name)} students.")
-    print("index.html updated and verified.")
+    print(f"{STUDENTS_JSON.relative_to(REPO_ROOT)} updated and verified.")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("xlsx", help="Path to the Изменения_графика_SL.xlsx file")
-    ap.add_argument("--apply", action="store_true", help="Write changes to index.html (default: dry-run)")
+    ap.add_argument("--apply", action="store_true", help="Write changes to data/students.json (default: dry-run)")
     args = ap.parse_args()
 
     result = process(args.xlsx)
