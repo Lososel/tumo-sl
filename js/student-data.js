@@ -19,10 +19,72 @@
   const TIME_SLOTS = ['10:30-12:30', '14:30-16:30', '16:30-18:30'];
 
   // "БАТЫРЖАН НҰРАЛИ АМАНГЕЛДІҰЛЫ" -> "Батыржан Нұрали Амангелдіұлы".
-  // Every word (also after "-", "(" or "+") gets a capital first letter, the rest lowercase.
+  // Same rule as titleCase() in the onboarding app: every word (also after "-", an apostrophe,
+  // "(" or "+") gets a capital first letter, the rest lowercase.
   function properCase(value) {
     const s = (value == null ? '' : String(value)).replace(/\s+/g, ' ').trim().toLowerCase();
-    return s.replace(/(^|[\s\-(+])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase());
+    return s.replace(/(^|[\s\-‐'’ʼ(+])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase());
+  }
+
+  // ---------- search ----------
+  // Kazakh letters fold to their closest Russian letter (as in the onboarding app), plus ё/й/э,
+  // so either keyboard layout finds the name: "нуртас" finds "Нұртас", "Әлихан" finds "Алихан".
+  const FOLD = { 'ә': 'а', 'ғ': 'г', 'қ': 'к', 'ң': 'н', 'ө': 'о', 'ұ': 'у', 'ү': 'у', 'һ': 'х', 'і': 'и',
+                 'ё': 'е', 'й': 'и', 'э': 'е' };
+  const MIN_QUERY_LETTERS = 3;
+
+  function words(text) {
+    return (String(text == null ? '' : text).toLowerCase()
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '') // Latin diacritics; й/ё are folded below
+      .normalize('NFC').match(/[\p{L}\p{N}]+/gu) || []);
+  }
+
+  const fold = w => w.replace(/[әғқңөұүһіёйэ]/g, ch => FOLD[ch]);
+
+  // Each word of a name as its comparable spellings. "ә" is typed as "а" or "е" on a Russian
+  // keyboard ("Әлихан" -> "Алихан", "Сәкен" -> "Сакен"/"Секен"), so both are kept.
+  function nameTokens(name) {
+    return words(name).map(w => {
+      const base = fold(w);
+      return w.includes('ә') ? [base, fold(w.replace(/ә/g, 'е'))] : [base];
+    });
+  }
+
+  function queryTokens(query) {
+    return words(query).map(fold);
+  }
+
+  // Every query word must be the start of a *different* word of the name, in any order
+  // (onboarding app rule). Longest query words are placed first to avoid greedy mis-pairing.
+  function matchesName(qTokens, nTokens) {
+    const free = nTokens.slice();
+    for (const q of qTokens.slice().sort((a, b) => b.length - a.length)) {
+      const i = free.findIndex(variants => variants.some(v => v.startsWith(q)));
+      if (i === -1) return false;
+      free.splice(i, 1);
+    }
+    return true;
+  }
+
+  // -> {status: 'short' | 'none' | 'ok', results, total}
+  // Words shorter than 3 letters are ignored; whole-word matches are listed first.
+  function searchStudents(records, query, limit) {
+    const q = queryTokens(query).filter(w => w.length >= MIN_QUERY_LETTERS);
+    if (!q.length) return { status: 'short', results: [], total: 0 };
+    const found = [];
+    for (const r of records) {
+      const tokens = r._t || (r._t = nameTokens(r.n));
+      if (matchesName(q, tokens)) {
+        const whole = q.filter(w => tokens.some(vs => vs.includes(w))).length;
+        found.push({ r, whole });
+      }
+    }
+    found.sort((a, b) => b.whole - a.whole || a.r.n.localeCompare(b.r.n, 'ru'));
+    return {
+      status: found.length ? 'ok' : 'none',
+      results: found.slice(0, limit || found.length).map(f => f.r),
+      total: found.length
+    };
   }
 
   function cleanText(value) {
@@ -146,5 +208,6 @@
     throw lastError;
   }
 
-  return { properCase, normalizeTime, parseCsv, parseStudents, fromJson, fromCsv, loadStudents, DEFAULT_STAGE };
+  return { properCase, normalizeTime, parseCsv, parseStudents, fromJson, fromCsv, loadStudents,
+           nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, DEFAULT_STAGE };
 });

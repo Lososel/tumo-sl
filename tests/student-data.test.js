@@ -76,3 +76,43 @@ test('data/students.json parses and every name is already in Title Case', () => 
     assert.strictEqual(r[3], S.properCase(r[3]), r[3]);
   });
 });
+
+test('search: 3-letter prefixes of first and/or last name, any order', () => {
+  const recs = ['Батыржан Нұрали Амангелдіұлы', 'Батырхан Ахметов', 'Ерлан Батыров', 'Амина Сейтказы']
+    .map(n => ({ n }));
+  const names = q => S.searchStudents(recs, q).results.map(r => r.n);
+  assert.deepStrictEqual(names('Бат'), ['Батыржан Нұрали Амангелдіұлы', 'Батырхан Ахметов', 'Ерлан Батыров']);
+  assert.deepStrictEqual(names('Ама'), ['Батыржан Нұрали Амангелдіұлы']);
+  assert.deepStrictEqual(names('Бат Ама'), ['Батыржан Нұрали Амангелдіұлы']);
+  assert.deepStrictEqual(names('ама бат'), ['Батыржан Нұрали Амангелдіұлы']);
+  assert.deepStrictEqual(names('ахметов батырхан'), ['Батырхан Ахметов']);
+  assert.deepStrictEqual(names('Бат Бат'), []); // two words can't both use the same name word
+  assert.strictEqual(S.searchStudents(recs, 'Ба').status, 'short');
+  assert.strictEqual(S.searchStudents(recs, 'Ба Ам').status, 'short');
+  assert.deepStrictEqual(names('Ба Ама'), ['Батыржан Нұрали Амангелдіұлы']); // short words ignored
+  assert.strictEqual(S.searchStudents(recs, 'Xyz').status, 'none');
+});
+
+test('search: Kazakh and Russian letters are interchangeable', () => {
+  const recs = ['Нұртас Бердікұл', 'Әлихан Сәкенов', 'Ғалия Қасымова', 'Өмірзақ Үсенов', 'Ілияс Шоқан', 'Артём Йорданов']
+    .map(n => ({ n }));
+  const first = q => (S.searchStudents(recs, q).results[0] || {}).n;
+  assert.strictEqual(first('нуртас'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('БЕРДИКУЛ'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('Нұр'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('алихан'), 'Әлихан Сәкенов');   // ә ~ а
+  assert.strictEqual(first('элихан'), 'Әлихан Сәкенов');   // ә ~ э/е
+  assert.strictEqual(first('секенов'), 'Әлихан Сәкенов');  // ә ~ е
+  assert.strictEqual(first('галия касым'), 'Ғалия Қасымова');
+  assert.strictEqual(first('омир усен'), 'Өмірзақ Үсенов');
+  assert.strictEqual(first('илияс'), 'Ілияс Шоқан');
+  assert.strictEqual(first('шокан'), 'Ілияс Шоқан');
+  assert.strictEqual(first('артем иорд'), 'Артём Йорданов');
+});
+
+test('search: whole-word matches first, results limited', () => {
+  const recs = ['Баты Ахметова', 'Батыржан Алиев', 'Батырхан Бек'].map(n => ({ n }));
+  const res = S.searchStudents(recs, 'баты', 2);
+  assert.strictEqual(res.total, 3);
+  assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Алиев']);
+});

@@ -73,9 +73,10 @@ CANON_PRIMARY_COACH = {
 
 def proper_case(s):
     """'БАТЫРЖАН НҰРАЛИ АМАНГЕЛДІҰЛЫ' -> 'Батыржан Нұрали Амангелдіұлы'.
-    Mirrors properCase() in js/student-data.js: capital after start, space, '-', '(' or '+'."""
+    Mirrors properCase() in js/student-data.js: capital after start, space, '-', an apostrophe,
+    '(' or '+'."""
     s = re.sub(r"\s+", " ", str(s or "")).strip().lower()
-    return re.sub(r"(^|[\s\-(+])([^\W\d_])", lambda m: m.group(1) + m.group(2).upper(), s)
+    return re.sub(r"(^|[\s\-‐'’ʼ(+])([^\W\d_])", lambda m: m.group(1) + m.group(2).upper(), s)
 
 
 def norm(s):
