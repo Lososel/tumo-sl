@@ -47,6 +47,17 @@ HEADERS = {
 }
 
 
+# Latin letters that look like Cyrillic ones, typed by mistake inside Cyrillic names
+# ("Tөлеуғазы" with a Latin T, "Iңкар" with a Latin I). Fixed only in words that mix both scripts,
+# so Latin names ("Agayeva Zakhirat") stay as they are.
+LATIN_TO_CYRILLIC = str.maketrans("ABCEHIKMOPTXYabceikmopxy", "АВСЕНІКМОРТХУавсеікморху")
+CYRILLIC_RE = re.compile(r"[\u0400-\u04ff]")
+
+
+def fix_mixed_script(name):
+    return " ".join(w.translate(LATIN_TO_CYRILLIC) if CYRILLIC_RE.search(w) else w for w in name.split(" "))
+
+
 def slot_from_text(text):
     m = re.search(r"(\d{1,2})[:.]\d{2}", str(text or ""))
     return SLOT_BY_HOUR.get(m.group(1).zfill(2)) if m else None
@@ -116,7 +127,7 @@ def parse(tables, published=None):
             return row[i] if i is not None and i < len(row) else None
 
         for line_no, row in enumerate(rows[1:], start=2):
-            name = proper_case(get(row, "name"))
+            name = proper_case(fix_mixed_script(clean_ws(get(row, "name"))))
             if not name:
                 continue
             where = f"[{tab or 'csv'}:{line_no}] {name}"
