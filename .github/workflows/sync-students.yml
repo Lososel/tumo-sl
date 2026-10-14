@@ -40,34 +40,26 @@ jobs:
             exit 1
           fi
 
-      - name: Authenticate to Google
-        id: auth
-        if: env.SA_JSON != ''
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          token_format: access_token
-          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
-
-      - name: Download master sheet
-        env:
-          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
-        run: |
-          if [ -n "$ACCESS_TOKEN" ]; then
-            curl -fsSL -H "Authorization: Bearer $ACCESS_TOKEN" \
-              "https://www.googleapis.com/drive/v3/files/$FILE_ID?alt=media&supportsAllDrives=true" -o "$RUNNER_TEMP/sheet"
-          else
-            curl -fsSL "$SHEET_URL" -o "$RUNNER_TEMP/sheet"
-          fi
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Build data/students.json
+      - name: Install dependencies
+        run: pip install --quiet openpyxl google-auth requests
+
+      # The key signs its own token (like tumo-onb-app), so only the Drive API must be enabled.
+      - name: Download master sheet
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
-          pip install --quiet openpyxl
-          python3 tools/sheet_to_students.py "$RUNNER_TEMP/sheet"
+          if [ -n "$SA_JSON" ]; then
+            python3 tools/fetch_sheet.py "$FILE_ID" "$RUNNER_TEMP/sheet"
+          else
+            curl -fsSL "$SHEET_URL" -o "$RUNNER_TEMP/sheet"
+          fi
+
+      - name: Build data/students.json
+        run: python3 tools/sheet_to_students.py "$RUNNER_TEMP/sheet"
 
       - name: Commit changes
         run: |
