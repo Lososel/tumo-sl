@@ -469,9 +469,12 @@
 <script>
   // Student data is fetched at runtime (see js/student-data.js), so edits to the master
   // list show up without touching this file. Sources are tried in order:
-  //   1. STUDENT_SHEET_CSV_URL — optional Google Sheets "File → Share → Publish to web → CSV" link.
-  //      Expected columns (header row): ФИО, День SL, Время, Новый коуч SL, ex-Coach, Этап, Почта TUMO ученика.
-  //   2. data/students.json — maintained by tools/sync_schedule.py.
+  //   1. STUDENT_SHEET_CSV_URL — optional public CSV with ONLY these columns:
+  //      ФИО, День SL, Время, Новый коуч SL, ex-Coach, Этап, Почта TUMO ученика.
+  //      Never point it at the master student sheet: it holds phones and IIN, and every
+  //      visitor's browser would download them.
+  //   2. data/students.json — synced from the master sheet every 15 minutes by
+  //      .github/workflows/sync-students.yml (tools/sheet_to_students.py).
   const STUDENT_SHEET_CSV_URL = '';
   const STUDENT_SOURCES = [STUDENT_SHEET_CSV_URL, 'data/students.json'];
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
