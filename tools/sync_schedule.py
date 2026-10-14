@@ -47,6 +47,8 @@ CYR_TO_LATIN_COACH = {
     "алинур": "Alinur",
     "алмас": "Almas",
     "аружан": "Aruzhan",
+    "аружан т": "Aruzhan Torebek",
+    "аружан торебек": "Aruzhan Torebek",
     "акбота": "Akbota",
     "дана ахметова": "Dana Akhmetova",
     "дана телжан": "Dana Telzhan",

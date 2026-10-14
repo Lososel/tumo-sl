@@ -1,0 +1,82 @@
+# Pulls the master student spreadsheet, keeps only the public fields and commits
+# data/students.json when it changed. The site fetches that file at runtime, and
+# Render redeploys on every push to main, so sheet edits go live automatically.
+#
+# Configure ONE of these in Settings → Secrets and variables → Actions:
+#   GOOGLE_SERVICE_ACCOUNT_JSON (secret, recommended) — key of a service account the sheet
+#       is shared with (Viewer). Downloads the whole workbook (all schedule tabs) via the Drive API.
+#       Optional variable STUDENT_SHEET_FILE_ID overrides the file id below.
+#   STUDENT_SHEET_CSV_URL (secret) — a direct download link that works without login
+#       (requires "Anyone with the link" sharing). Prefer an .xlsx link, e.g.
+#       https://drive.google.com/uc?export=download&id=<file id>, since a CSV export holds a single tab.
+name: Sync students from master sheet
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-students
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SA_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+      SHEET_URL: ${{ secrets.STUDENT_SHEET_CSV_URL }}
+      FILE_ID: ${{ vars.STUDENT_SHEET_FILE_ID || '1qcmLsXYRvu6Pf0ghM17V0dvq3sUuBDqm' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check configuration
+        run: |
+          if [ -z "$SA_JSON" ] && [ -z "$SHEET_URL" ]; then
+            echo "::error::Set the GOOGLE_SERVICE_ACCOUNT_JSON or STUDENT_SHEET_CSV_URL secret (see the comment at the top of this workflow)."
+            exit 1
+          fi
+
+      - name: Authenticate to Google
+        id: auth
+        if: env.SA_JSON != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+
+      - name: Download master sheet
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          if [ -n "$ACCESS_TOKEN" ]; then
+            curl -fsSL -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://www.googleapis.com/drive/v3/files/$FILE_ID?alt=media&supportsAllDrives=true" -o "$RUNNER_TEMP/sheet"
+          else
+            curl -fsSL "$SHEET_URL" -o "$RUNNER_TEMP/sheet"
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build data/students.json
+        run: |
+          pip install --quiet openpyxl
+          python3 tools/sheet_to_students.py "$RUNNER_TEMP/sheet"
+
+      - name: Commit changes
+        run: |
+          git add data/students.json
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Sync students from master sheet"
+          git push
