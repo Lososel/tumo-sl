@@ -178,6 +178,12 @@
     margin-top:8px;
     padding:0 6px;
   }
+  .updated-at{          /* text-center text-sm text-slate-400, as in the onboarding app */
+    margin:0;
+    text-align:center;
+    font-size:14px;
+    color:#94a3b8;
+  }
   .no-results{
     border:2px dashed var(--purple-line);
     background:var(--purple-tint);
@@ -556,6 +562,7 @@
       multiMatch:(n)=>`Найдено несколько учеников (${n}) — выберите нужного по имени, дню и времени занятий.`,
       tooMany:'Найдено несколько совпадений. Введите имя и фамилию полностью, чтобы уточнить поиск.',
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
+      updatedAt:(date)=>`Данные обновлены: ${date}`,
       searchBtn:'Найти',
       searchPlaceholder:'Имя и фамилия учащегося...',
       factSchedule:'график обучения', factMainDay:'основной день самообучения', factCoach:'коуч', factCoachEmail:'email коуча', factStage:'этап обучения',
@@ -604,6 +611,7 @@
       multiMatch:(n)=>`Бірнеше оқушы табылды (${n}) — аты, күні мен уақыты бойынша керегін таңдаңыз.`,
       tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
+      updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
       searchBtn:'Табу',
       searchPlaceholder:'Оқушының аты-жөні...',
       factSchedule:'оқу кестесі', factMainDay:'негізгі өзіндік оқу күні', factCoach:'коуч', factCoachEmail:'коучтың email-і', factStage:'оқу кезеңі',
@@ -653,13 +661,15 @@
   let DATA = [];
   let dataState = 'loading'; // 'loading' | 'ready' | 'error'
   let dataSignature = '';
+  let dataUpdated = null; // "updated" of data/students.json: when the sync last changed the data
 
   async function refreshData(){
     try {
-      const { records } = await StudentData.loadStudents(STUDENT_SOURCES);
-      const signature = JSON.stringify(records);
+      const { records, updated } = await StudentData.loadStudents(STUDENT_SOURCES);
+      const signature = JSON.stringify([records, updated]);
       dataState = 'ready';
       if(signature === dataSignature) return;
+      dataUpdated = updated;
       dataSignature = signature;
       DATA = records.map(r => Object.assign(r, { _t: StudentData.nameTokens(r.n) }));
       if(!lastQueryEmpty) runSearch(); // re-render with fresh data
@@ -787,6 +797,14 @@
         new QRCode(document.getElementById('qr-'+index), { text: group.link, width: 120, height: 120, colorDark: '#1b1c1c', colorLight: '#ffffff' });
       }
     });
+    // As in the onboarding app: when the shown data was last updated, under the cards.
+    const updated = StudentData.formatUpdated(dataUpdated);
+    if(updated){
+      const note = document.createElement('p');
+      note.className = 'updated-at';
+      note.textContent = t('updatedAt')(updated);
+      results.appendChild(note);
+    }
   }
 
   function renderFaq(){
