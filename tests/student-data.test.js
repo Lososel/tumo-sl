@@ -111,11 +111,14 @@ test('search: Kazakh and Russian letters are interchangeable', () => {
   assert.strictEqual(first('артем иорд'), 'Артём Йорданов');
 });
 
-test('search: whole-word matches first, results limited', () => {
+test('search: whole-word matches first; more than 3 matches is "too many"', () => {
   const recs = ['Батырхан Ахмедов', 'Батыржан Ахметов', 'Баты Ахметова'].map(n => ({ n }));
-  const res = S.searchStudents(recs, 'баты ахм', 2);
-  assert.strictEqual(res.total, 3);
-  assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Ахметов']);
+  const res = S.searchStudents(recs, 'баты ахм');
+  assert.strictEqual(res.status, 'ok');
+  assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Ахметов', 'Батырхан Ахмедов']);
+  const four = recs.concat([{ n: 'Батыр Ахметжанов' }]);
+  assert.deepStrictEqual(S.searchStudents(four, 'баты ахм'), { status: 'too_many', results: [], total: 4 });
+  assert.strictEqual(S.MAX_RESULTS, 3);
 });
 
 test('search: Latin lookalike letters inside Cyrillic names still match', () => {
