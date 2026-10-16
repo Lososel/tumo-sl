@@ -16,8 +16,10 @@ def row(name, day, ex, coach, email="", new="", sched="", phone="87001234567", i
     return [phone, iin, new, email, sched, name, day, ex, coach, None, "TRUE", "FALSE", "note"]
 
 
-def xlsx(tabs):
+def xlsx(tabs, fills=None):
+    """fills: {(tab, row number): "RRGGBB"} — fill the whole row with that colour."""
     import openpyxl
+    from openpyxl.styles import PatternFill
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -25,6 +27,10 @@ def xlsx(tabs):
         ws = wb.create_sheet(title)
         for r in rows:
             ws.append(r)
+        for (t, line), rgb in (fills or {}).items():
+            if t == title:
+                for cell in ws[line]:
+                    cell.fill = PatternFill("solid", fgColor="FF" + rgb)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -88,6 +94,56 @@ class SheetToStudentsTest(unittest.TestCase):
         raw = xlsx({"ПН ЧТ 1630": [HEADER, row("TӨЛЕУҒАЗЫ АЛДИЯР", "Четверг", "Nurai", "Elmira")]})
         students, _ = sts.parse(sts.read_tables(raw))
         self.assertEqual(students[0][0], "Төлеуғазы Алдияр")
+
+    def test_red_rows_are_excluded(self):
+        tabs = {"ВТ ПТ 1430": [HEADER,
+                               row("Активный Ученик", "Вторник", "Almas", "Almas"),
+                               row("Красный Ученик", "Пятница", "Almas", "Almas"),
+                               row("Светло Красный", "Пятница", "Almas", "Almas"),
+                               row("Оранжевый Ученик", "Вторник", "Almas", "Almas"),
+                               row("Жёлтый Ученик", "Вторник", "Almas", "Almas")]}
+        fills = {("ВТ ПТ 1430", 3): "FF0000", ("ВТ ПТ 1430", 4): "E06666",
+                 ("ВТ ПТ 1430", 5): "FF9900", ("ВТ ПТ 1430", 6): "FFFF00"}
+        stats = {}
+        students, _ = sts.parse(sts.read_tables(xlsx(tabs, fills)), stats=stats)
+        self.assertEqual([s[0] for s in students], ["Активный Ученик", "Оранжевый Ученик", "Жёлтый Ученик"])
+        self.assertEqual(stats, {"red": 2, "notes": 0})
+
+    def test_red_old_row_of_a_moved_student_is_dropped(self):
+        tabs = {"ПН ЧТ 1030": [HEADER, row("Сара Мухтар", "Понедельник", "Gulnaz", "Gulnaz")],
+                "ВТ ПТ 1430": [HEADER, row("Сара Мухтар", "Пятница", "Gulnaz", "Alinur")]}
+        students, problems = sts.parse(sts.read_tables(xlsx(tabs, {("ПН ЧТ 1030", 2): "FF0000"})))
+        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", ""]])
+        self.assertEqual(problems, [])  # no duplicate left to resolve
+
+    def test_inactive_keywords_in_notes_columns(self):
+        header = HEADER + [None]  # an unlabelled note column after «Причина ухода»
+        def r(name, reason="", extra=None, sched=""):
+            cells = row(name, "Вторник", "Almas", "Almas", sched=sched)
+            cells[12] = reason
+            return cells + [extra]
+        tabs = {"ВТ ПТ 1030": [header,
+                               r("Первый Ученик", reason="ignore"),
+                               r("Второй Ученик", reason="self initiated"),
+                               r("Третий Ученик", reason="ЛИСТ ОЖИДАНИЯ 2027"),
+                               r("Четвёртый Ученик", extra="отчислен"),
+                               r("Пятый Ученик", sched="Вторник, Пятница : 10:30–12:30 (лист ожидания)"),
+                               r("Шестой Ученик", reason="отказ, не успевает по учебе")]}
+        stats = {}
+        students, _ = sts.parse(sts.read_tables(xlsx(tabs)), stats=stats)
+        # «Расписание» with "(лист ожидания)" is the originally requested slot, not a status
+        self.assertEqual([s[0] for s in students], ["Пятый Ученик", "Шестой Ученик"])
+        self.assertEqual(stats, {"red": 0, "notes": 4})
+
+    def test_is_red(self):
+        from openpyxl.styles.colors import Color
+        for rgb in ("FFFF0000", "FFE06666", "FFCC0000", "FFEA4335"):
+            self.assertTrue(sts.is_red(Color(rgb=rgb)), rgb)
+        for rgb in ("FFFF9900", "FFFF00FF", "FFFFFF00", "FFEA9999", "FFFFFFFF", "FF9900FF", "FF00FF00"):
+            self.assertFalse(sts.is_red(Color(rgb=rgb)), rgb)
+        self.assertTrue(sts.is_red(Color(indexed=10)))   # palette red
+        self.assertFalse(sts.is_red(Color(theme=5)))     # theme colours aren't resolved
+        self.assertFalse(sts.is_red(None))
 
     def test_html_login_page_is_rejected(self):
         with self.assertRaises(SystemExit):

@@ -10,6 +10,13 @@ Input: the workbook as .xlsx (all schedule tabs) or a CSV export of a single tab
   - xlsx: every tab named like "ПН ЧТ 1030" / "ВТ ПТ 1630" is read; the tab name gives the time slot.
   - csv:  the time slot is taken from "Новое расписание" or "Расписание".
 
+Inactive students are left out:
+  - rows highlighted red (fill of the «ФИО ученика» cell; .xlsx only, a CSV has no colours);
+  - rows whose notes/status columns («Причина ухода», «Ушел к коучу», unlabelled note
+    columns...) say "ignore", "self initiated", "лист ожидания" or "отчислен".
+  The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
+  first asked for, not the student's current status.
+
 Usage:
   python3 tools/sheet_to_students.py master.xlsx            # write data/students.json if changed
   python3 tools/sheet_to_students.py export.csv --dry-run   # only print the summary
@@ -34,6 +41,37 @@ SLOT_BY_HOUR = {"10": "10:30-12:30", "14": "14:30-16:30", "16": "16:30-18:30"}
 TAB_RE = re.compile(r"^(ПН\s*ЧТ|ВТ\s*ПТ)\s*(\d{2})\d{2}$", re.I)
 DAYS_BY_PAIR = {"пнчт": {"Понедельник", "Четверг"}, "втпт": {"Вторник", "Пятница"}}
 TUMO_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@tumo\.world$")
+
+# Notes/status columns checked for INACTIVE_RE (prefix match), plus columns with an empty header.
+NOTE_HEADERS = ("причина ухода", "ушел к коучу", "ушёл к коучу", "статус", "примечан", "коммент", "status", "notes")
+INACTIVE_RE = re.compile(r"ignore|self[\s-]*initiated|лист\s*ожидани|отчисл", re.I)
+
+
+def is_red(color):
+    """openpyxl Color -> True for red highlights (#FF0000, #E06666, #CC0000...), not for orange,
+    magenta, pink or yellow. Theme colours can't be resolved without the theme and count as not red."""
+    if color is None:
+        return False
+    rgb = None
+    if color.type == "rgb" and isinstance(color.rgb, str):
+        rgb = color.rgb[-6:]
+    elif color.type == "indexed" and color.indexed is not None:
+        from openpyxl.styles.colors import COLOR_INDEX
+
+        if 0 <= color.indexed < len(COLOR_INDEX):
+            rgb = COLOR_INDEX[color.indexed][-6:]
+    if not rgb or not re.fullmatch(r"[0-9A-Fa-f]{6}", rgb):
+        return False
+    r, g, b = (int(rgb[i:i + 2], 16) for i in (0, 2, 4))
+    return r >= 200 and g <= 115 and b <= 115 and r - max(g, b) >= 90
+
+
+def red_fill(cell):
+    fill = getattr(cell, "fill", None)
+    if fill is None or fill.fill_type in (None, "none"):
+        return False
+    return is_red(fill.fgColor) or is_red(fill.start_color)
+
 
 # Column header (lowercased, prefix match) -> field. Anything else in the sheet is ignored.
 HEADERS = {
@@ -80,17 +118,39 @@ def map_header(row):
 
 
 def read_tables(raw):
-    """bytes -> [(tab_name or None, rows)]"""
+    """bytes -> [(tab_name or None, rows, red)] where red[i] says row i is highlighted red
+    (its «ФИО ученика» cell, or the first cell if the tab has no such column). CSV: red is None."""
     if raw[:2] == b"PK":
         import openpyxl
 
         wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
-        return [(ws.title.strip(), list(ws.iter_rows(values_only=True)))
-                for ws in wb.worksheets if TAB_RE.match(ws.title.strip())]
+        tables = []
+        for ws in wb.worksheets:
+            if not TAB_RE.match(ws.title.strip()):
+                continue
+            rows, red, name_col = [], [], 0
+            for i, cells in enumerate(ws.iter_rows()):
+                values = tuple(c.value for c in cells)
+                if i == 0:
+                    name_col = map_header(values).get("name", 0)
+                rows.append(values)
+                red.append(i > 0 and name_col < len(cells) and red_fill(cells[name_col]))
+            tables.append((ws.title.strip(), rows, red))
+        return tables
     text = raw.decode("utf-8-sig")
     if text.lstrip()[:1] == "<":
         raise SystemExit("Got an HTML page instead of the sheet: check the link/sharing or the credentials.")
-    return [(None, list(csv.reader(io.StringIO(text))))]
+    return [(None, list(csv.reader(io.StringIO(text))), None)]
+
+
+def note_columns(header, name_col):
+    """Indexes of notes/status columns: known headers, or unlabelled columns after the name."""
+    cols = []
+    for i, cell in enumerate(header):
+        h = clean_ws(cell).lower()
+        if (h and h.startswith(NOTE_HEADERS)) or (not h and i > name_col):
+            cols.append(i)
+    return cols
 
 
 def pick_duplicate(cands, published):
@@ -107,17 +167,23 @@ def pick_duplicate(cands, published):
     return cands[-1]
 
 
-def parse(tables, published=None):
-    """-> (students, problems). published: {norm(name): row} of the current data/students.json."""
+def parse(tables, published=None, stats=None):
+    """-> (students, problems). published: {norm(name): row} of the current data/students.json.
+    stats (optional dict) receives the counts of rows excluded as inactive."""
     published = published or {}
+    stats = stats if stats is not None else {}
+    stats.update(red=0, notes=0)
     by_key, problems = {}, []
-    for tab, rows in tables:
+    for table in tables:
+        tab, rows = table[0], table[1]
+        red = table[2] if len(table) > 2 and table[2] else [False] * len(rows)
         if not rows:
             continue
         cols = map_header(rows[0])
         if "name" not in cols or "day" not in cols:
             problems.append(f"[{tab}] нет колонок «ФИО ученика» / «День SL» — вкладка пропущена")
             continue
+        notes = note_columns(rows[0], cols["name"])
         m = TAB_RE.match(tab or "")
         tab_slot = SLOT_BY_HOUR.get(m.group(2)) if m else None
         pair_days = DAYS_BY_PAIR[re.sub(r"\s", "", m.group(1)).lower()] if m else set(DAYS_OK)
@@ -129,6 +195,12 @@ def parse(tables, published=None):
         for line_no, row in enumerate(rows[1:], start=2):
             name = proper_case(fix_mixed_script(clean_ws(get(row, "name"))))
             if not name:
+                continue
+            if red[line_no - 1]:
+                stats["red"] += 1
+                continue
+            if any(i < len(row) and row[i] and INACTIVE_RE.search(str(row[i])) for i in notes):
+                stats["notes"] += 1
                 continue
             where = f"[{tab or 'csv'}:{line_no}] {name}"
             day = clean_ws(get(row, "day")).capitalize()
@@ -172,8 +244,11 @@ def main():
 
     out = Path(args.out)
     current = load_student_data(out) if out.exists() else []
-    students, problems = parse(read_tables(Path(args.source).read_bytes()), {norm(r[0]): r for r in current})
+    stats = {}
+    students, problems = parse(read_tables(Path(args.source).read_bytes()), {norm(r[0]): r for r in current}, stats)
     print(f"Учеников: {len(students)}, с почтой TUMO: {sum(1 for s in students if s[6])}, проблем: {len(problems)}")
+    print(f"Исключено как неактивные: {stats['red'] + stats['notes']} строк — "
+          f"красная заливка: {stats['red']}, отметка в примечаниях: {stats['notes']}")
     for p in problems:
         print("  " + p)
     if len(students) < args.min_students:
