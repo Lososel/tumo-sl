@@ -32,6 +32,7 @@
   const FOLD = { 'ә': 'а', 'ғ': 'г', 'қ': 'к', 'ң': 'н', 'ө': 'о', 'ұ': 'у', 'ү': 'у', 'һ': 'х', 'і': 'и',
                  'ё': 'е', 'й': 'и', 'э': 'е' };
   const MIN_QUERY_LETTERS = 3;
+  const MIN_QUERY_WORDS = 2; // first name + last name, as in the onboarding app
 
   // Latin letters that look like Cyrillic ones (lowercased). Typed by mistake inside Cyrillic
   // names in the sheet: "Tөлеуғазы" (Latin T), "Iңкар" (Latin I). Only used for mixed words.
@@ -74,10 +75,11 @@
   }
 
   // -> {status: 'short' | 'none' | 'ok', results, total}
-  // Words shorter than 3 letters are ignored; whole-word matches are listed first.
+  // Needs at least a first name and a last name of 3+ letters each (shorter words are ignored);
+  // whole-word matches are listed first.
   function searchStudents(records, query, limit) {
     const q = queryTokens(query).filter(w => w.length >= MIN_QUERY_LETTERS);
-    if (!q.length) return { status: 'short', results: [], total: 0 };
+    if (q.length < MIN_QUERY_WORDS) return { status: 'short', results: [], total: 0 };
     const found = [];
     for (const r of records) {
       const tokens = r._t || (r._t = nameTokens(r.n));
@@ -216,5 +218,6 @@
   }
 
   return { properCase, normalizeTime, parseCsv, parseStudents, fromJson, fromCsv, loadStudents,
-           nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, DEFAULT_STAGE };
+           nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS,
+           DEFAULT_STAGE };
 });

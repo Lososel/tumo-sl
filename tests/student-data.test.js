@@ -77,44 +77,45 @@ test('data/students.json parses and every name is already in Title Case', () => 
   });
 });
 
-test('search: 3-letter prefixes of first and/or last name, any order', () => {
+test('search: first name and last name, 3+ letters each, any order', () => {
   const recs = ['Батыржан Нұрали Амангелдіұлы', 'Батырхан Ахметов', 'Ерлан Батыров', 'Амина Сейтказы']
     .map(n => ({ n }));
   const names = q => S.searchStudents(recs, q).results.map(r => r.n);
-  assert.deepStrictEqual(names('Бат'), ['Батыржан Нұрали Амангелдіұлы', 'Батырхан Ахметов', 'Ерлан Батыров']);
-  assert.deepStrictEqual(names('Ама'), ['Батыржан Нұрали Амангелдіұлы']);
+  assert.strictEqual(S.searchStudents(recs, 'Бат').status, 'short');      // one word is not enough
+  assert.strictEqual(S.searchStudents(recs, 'Батыржан').status, 'short');
   assert.deepStrictEqual(names('Бат Ама'), ['Батыржан Нұрали Амангелдіұлы']);
+  assert.deepStrictEqual(names('Бат Ерл'), ['Ерлан Батыров']);
   assert.deepStrictEqual(names('ама бат'), ['Батыржан Нұрали Амангелдіұлы']);
   assert.deepStrictEqual(names('ахметов батырхан'), ['Батырхан Ахметов']);
   assert.deepStrictEqual(names('Бат Бат'), []); // two words can't both use the same name word
   assert.strictEqual(S.searchStudents(recs, 'Ба').status, 'short');
   assert.strictEqual(S.searchStudents(recs, 'Ба Ам').status, 'short');
-  assert.deepStrictEqual(names('Ба Ама'), ['Батыржан Нұрали Амангелдіұлы']); // short words ignored
-  assert.strictEqual(S.searchStudents(recs, 'Xyz').status, 'none');
+  assert.strictEqual(S.searchStudents(recs, 'Ба Ама').status, 'short');  // "Ба" is too short
+  assert.strictEqual(S.searchStudents(recs, 'Xyz Abc').status, 'none');
 });
 
 test('search: Kazakh and Russian letters are interchangeable', () => {
   const recs = ['Нұртас Бердікұл', 'Әлихан Сәкенов', 'Ғалия Қасымова', 'Өмірзақ Үсенов', 'Ілияс Шоқан', 'Артём Йорданов']
     .map(n => ({ n }));
   const first = q => (S.searchStudents(recs, q).results[0] || {}).n;
-  assert.strictEqual(first('нуртас'), 'Нұртас Бердікұл');
-  assert.strictEqual(first('БЕРДИКУЛ'), 'Нұртас Бердікұл');
-  assert.strictEqual(first('Нұр'), 'Нұртас Бердікұл');
-  assert.strictEqual(first('алихан'), 'Әлихан Сәкенов');   // ә ~ а
-  assert.strictEqual(first('элихан'), 'Әлихан Сәкенов');   // ә ~ э/е
-  assert.strictEqual(first('секенов'), 'Әлихан Сәкенов');  // ә ~ е
+  assert.strictEqual(first('нуртас берд'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('БЕРДИКУЛ НУРТАС'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('Нұр Бер'), 'Нұртас Бердікұл');
+  assert.strictEqual(first('алихан сак'), 'Әлихан Сәкенов');   // ә ~ а
+  assert.strictEqual(first('элихан сак'), 'Әлихан Сәкенов');   // ә ~ э/е
+  assert.strictEqual(first('секенов али'), 'Әлихан Сәкенов');  // ә ~ е
   assert.strictEqual(first('галия касым'), 'Ғалия Қасымова');
   assert.strictEqual(first('омир усен'), 'Өмірзақ Үсенов');
-  assert.strictEqual(first('илияс'), 'Ілияс Шоқан');
-  assert.strictEqual(first('шокан'), 'Ілияс Шоқан');
+  assert.strictEqual(first('илияс шок'), 'Ілияс Шоқан');
+  assert.strictEqual(first('шокан илияс'), 'Ілияс Шоқан');
   assert.strictEqual(first('артем иорд'), 'Артём Йорданов');
 });
 
 test('search: whole-word matches first, results limited', () => {
-  const recs = ['Баты Ахметова', 'Батыржан Алиев', 'Батырхан Бек'].map(n => ({ n }));
-  const res = S.searchStudents(recs, 'баты', 2);
+  const recs = ['Батырхан Ахмедов', 'Батыржан Ахметов', 'Баты Ахметова'].map(n => ({ n }));
+  const res = S.searchStudents(recs, 'баты ахм', 2);
   assert.strictEqual(res.total, 3);
-  assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Алиев']);
+  assert.deepStrictEqual(res.results.map(r => r.n), ['Баты Ахметова', 'Батыржан Ахметов']);
 });
 
 test('search: Latin lookalike letters inside Cyrillic names still match', () => {
@@ -122,8 +123,8 @@ test('search: Latin lookalike letters inside Cyrillic names still match', () => 
     .map(n => ({ n }));
   const first = q => (S.searchStudents(recs, q).results[0] || {}).n;
   assert.strictEqual(first('толеугазы алдияр'), 'Tөлеуғазы Алдияр Қуандықұлы'); // Latin T in the sheet
-  assert.strictEqual(first('Төлеуғазы'), 'Tөлеуғазы Алдияр Қуандықұлы');
-  assert.strictEqual(first('инкар'), 'Iңкар Киясова');                          // Latin I
+  assert.strictEqual(first('Төлеуғазы Алд'), 'Tөлеуғазы Алдияр Қуандықұлы');
+  assert.strictEqual(first('инкар кияс'), 'Iңкар Киясова');                          // Latin I
   assert.strictEqual(first('мади турсынбек'), 'Tұрсынбек Mади Мұратұлы');     // Latin T and M
-  assert.strictEqual(first('agayeva'), 'Agayeva Zakhirat');                     // Latin names untouched
+  assert.strictEqual(first('agayeva zakh'), 'Agayeva Zakhirat');                     // Latin names untouched
 });
