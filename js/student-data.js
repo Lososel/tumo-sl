@@ -195,9 +195,29 @@
   }
 
   function parseStudents(text, contentType) {
+    return parseSource(text, contentType).records;
+  }
+
+  // -> {records, updated}: updated is the "updated" timestamp of data/students.json (or null).
+  function parseSource(text, contentType) {
     const trimmed = String(text).replace(/^﻿/, '').trim();
     const looksJson = /json/i.test(contentType || '') || trimmed.startsWith('[') || trimmed.startsWith('{');
-    return looksJson ? fromJson(JSON.parse(trimmed)) : fromCsv(trimmed);
+    if (!looksJson) return { records: fromCsv(trimmed), updated: null };
+    const json = JSON.parse(trimmed);
+    return { records: fromJson(json), updated: (json && !Array.isArray(json) && json.updated) || null };
+  }
+
+  // "2026-10-16T07:24:05+00:00" -> "16.10.2026, 12:24" in the viewer's time zone; a bare date
+  // ("2026-10-16") -> "16.10.2026". Fixed format, like the onboarding app (not every browser
+  // ships Kazakh locale data for Intl).
+  function formatUpdated(value) {
+    if (!value) return '';
+    const pad = n => String(n).padStart(2, '0');
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (dateOnly) return `${dateOnly[3]}.${dateOnly[2]}.${dateOnly[1]}`;
+    const d = new Date(value);
+    if (isNaN(d)) return '';
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   // Tries each URL in order and returns {records, source} from the first one that works.
@@ -208,9 +228,9 @@
       try {
         const res = await doFetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-        const records = parseStudents(await res.text(), res.headers && res.headers.get('content-type'));
+        const { records, updated } = parseSource(await res.text(), res.headers && res.headers.get('content-type'));
         if (!records.length) throw new Error(url + ': пустой список');
-        return { records, source: url };
+        return { records, updated, source: url };
       } catch (err) {
         lastError = err;
       }
@@ -218,7 +238,7 @@
     throw lastError;
   }
 
-  return { properCase, normalizeTime, parseCsv, parseStudents, fromJson, fromCsv, loadStudents,
+  return { properCase, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });

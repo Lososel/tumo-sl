@@ -33,6 +33,16 @@ class StudentsJsonTest(unittest.TestCase):
                 [["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Nazym", "Самообучение", ""]],
             )
 
+    def test_updated_is_a_utc_timestamp(self):
+        import datetime
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "students.json"
+            ss.save_student_data([["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Almas", "Самообучение"]], path)
+            updated = json.loads(path.read_text(encoding="utf-8"))["updated"]
+            ts = datetime.datetime.fromisoformat(updated)
+            self.assertEqual(ts.utcoffset(), datetime.timedelta(0))
+            self.assertLess(abs((datetime.datetime.now(datetime.timezone.utc) - ts).total_seconds()), 60)
+
     def test_repo_data_is_valid(self):
         data = ss.load_student_data()
         self.assertGreater(len(data), 1000)

@@ -131,3 +131,16 @@ test('search: Latin lookalike letters inside Cyrillic names still match', () => 
   assert.strictEqual(first('мади турсынбек'), 'Tұрсынбек Mади Мұратұлы');     // Latin T and M
   assert.strictEqual(first('agayeva zakh'), 'Agayeva Zakhirat');                     // Latin names untouched
 });
+
+test('updated timestamp is read from students.json and formatted like the onboarding app', () => {
+  const src = S.parseSource(JSON.stringify({ updated: '2026-10-16T07:24:05+00:00', students: [['Иван Петров', 'Вторник', '10:30-12:30', 'Almas', 'Almas']] }));
+  assert.strictEqual(src.records.length, 1);
+  assert.strictEqual(src.updated, '2026-10-16T07:24:05+00:00');
+  const d = new Date('2026-10-16T07:24:05+00:00');
+  const pad = n => String(n).padStart(2, '0');
+  assert.strictEqual(S.formatUpdated(src.updated), `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`);
+  assert.strictEqual(S.formatUpdated('2026-10-14'), '14.10.2026');   // older files stored only the date
+  assert.strictEqual(S.formatUpdated(null), '');
+  assert.strictEqual(S.formatUpdated('garbage'), '');
+  assert.strictEqual(S.parseSource('[["Иван Петров","Вторник","10:30-12:30","",""]]').updated, null);
+});

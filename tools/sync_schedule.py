@@ -205,7 +205,8 @@ def save_student_data(data, path=None):
     body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
     text = (
         '{"fields":' + json.dumps(STUDENT_FIELDS) + ',\n'
-        '"updated":' + json.dumps(datetime.date.today().isoformat()) + ',\n'
+        # When the data last changed (UTC); the page shows it as «Данные обновлены: …».
+        '"updated":' + json.dumps(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")) + ',\n'
         '"students":[\n' + body + "\n]}\n"
     )
     out = Path(path or STUDENTS_JSON)
