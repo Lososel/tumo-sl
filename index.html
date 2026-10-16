@@ -554,7 +554,7 @@
       lede3:'Чтобы узнать день самообучения, время занятий и имя коуча, введите имя и фамилию учащегося — достаточно первых трёх букв каждого слова.',
       noResults:'Ничего не найдено — проверьте написание или напишите нам ниже.',
       multiMatch:(n)=>`Найдено несколько учеников (${n}) — выберите нужного по имени, дню и времени занятий.`,
-      manyMatches:(n,shown)=>`Найдено учеников: ${n}, показаны первые ${shown}. Уточните запрос — введите больше букв или отчество.`,
+      tooMany:'Найдено несколько совпадений. Введите имя и фамилию полностью, чтобы уточнить поиск.',
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
       searchBtn:'Найти',
       searchPlaceholder:'Имя и фамилия учащегося...',
@@ -602,7 +602,7 @@
       lede3:'Өзіндік оқу күнін, сабақ уақытын және коучтың атын білу үшін оқушының аты мен тегін енгізіңіз — әр сөздің алғашқы үш әрпі жеткілікті.',
       noResults:'Ештеңе табылмады — жазылуын тексеріңіз немесе төменде бізге жазыңыз.',
       multiMatch:(n)=>`Бірнеше оқушы табылды (${n}) — аты, күні мен уақыты бойынша керегін таңдаңыз.`,
-      manyMatches:(n,shown)=>`Табылған оқушылар: ${n}, алғашқы ${shown} көрсетілді. Сұрауды нақтылаңыз — көбірек әріп немесе әкесінің атын енгізіңіз.`,
+      tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
       searchBtn:'Табу',
       searchPlaceholder:'Оқушының аты-жөні...',
@@ -695,17 +695,18 @@
   // Search (js/student-data.js): first name AND last name, 3+ letters each; each word matches
   // the start of a different word of the name in any order; Kazakh/Russian letters and case
   // are ignored. "Бат Ама" or "ама батыр" find "Батыржан Амангелдіұлы"; "Бат" alone does not.
-  const MAX_SHOWN = 10;
+  // More than 3 matches shows no cards, only a request for the full name (onboarding app rule).
 
   function runSearch(){
     const q = input.value;
     lastQueryEmpty = !q.trim();
     if(lastQueryEmpty){ results.innerHTML=''; lastRendered=[]; return; }
     if(dataState !== 'ready'){ lastRendered=[]; renderStatus(t(dataState === 'error' ? 'dataError' : 'dataLoading')); return; }
-    const found = StudentData.searchStudents(DATA, q, MAX_SHOWN);
+    const found = StudentData.searchStudents(DATA, q);
     lastRendered = found.results;
     if(found.status === 'short'){ renderStatus(t('tooShort')); return; }
-    renderResults(found.results, found.total);
+    if(found.status === 'too_many'){ renderStatus(t('tooMany')); return; }
+    renderResults(found.results);
   }
 
   function renderStatus(text){
@@ -716,17 +717,17 @@
     results.appendChild(el);
   }
 
-  function renderResults(list, total){
+  function renderResults(list){
     results.innerHTML = '';
     if(list.length === 0){
       renderStatus(t('noResults'));
       return;
     }
-    if(total > list.length || list.length > 1){
+    if(list.length > 1){
       const hint = document.createElement('div');
       hint.className = 'search-hint';
       hint.style.marginBottom = '2px';
-      hint.textContent = total > list.length ? t('manyMatches')(total, list.length) : t('multiMatch')(list.length);
+      hint.textContent = t('multiMatch')(list.length);
       results.appendChild(hint);
     }
     list.forEach((r, index) => {

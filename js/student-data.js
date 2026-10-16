@@ -33,6 +33,7 @@
                  'ё': 'е', 'й': 'и', 'э': 'е' };
   const MIN_QUERY_LETTERS = 3;
   const MIN_QUERY_WORDS = 2; // first name + last name, as in the onboarding app
+  const MAX_RESULTS = 3;     // more matches than this: the query is too vague to show anything
 
   // Latin letters that look like Cyrillic ones (lowercased). Typed by mistake inside Cyrillic
   // names in the sheet: "Tөлеуғазы" (Latin T), "Iңкар" (Latin I). Only used for mixed words.
@@ -74,10 +75,12 @@
     return true;
   }
 
-  // -> {status: 'short' | 'none' | 'ok', results, total}
-  // Needs at least a first name and a last name of 3+ letters each (shorter words are ignored);
-  // whole-word matches are listed first.
-  function searchStudents(records, query, limit) {
+  // -> {status: 'short' | 'none' | 'too_many' | 'ok', results, total}
+  // Same rules as the onboarding app: needs a first name and a last name of 3+ letters each
+  // (shorter words are ignored); more than maxResults matches (default 3) shows nothing.
+  // Whole-word matches are listed first.
+  function searchStudents(records, query, maxResults) {
+    const max = maxResults || MAX_RESULTS;
     const q = queryTokens(query).filter(w => w.length >= MIN_QUERY_LETTERS);
     if (q.length < MIN_QUERY_WORDS) return { status: 'short', results: [], total: 0 };
     const found = [];
@@ -88,12 +91,10 @@
         found.push({ r, whole });
       }
     }
+    if (!found.length) return { status: 'none', results: [], total: 0 };
+    if (found.length > max) return { status: 'too_many', results: [], total: found.length };
     found.sort((a, b) => b.whole - a.whole || a.r.n.localeCompare(b.r.n, 'ru'));
-    return {
-      status: found.length ? 'ok' : 'none',
-      results: found.slice(0, limit || found.length).map(f => f.r),
-      total: found.length
-    };
+    return { status: 'ok', results: found.map(f => f.r), total: found.length };
   }
 
   function cleanText(value) {
@@ -218,6 +219,6 @@
   }
 
   return { properCase, normalizeTime, parseCsv, parseStudents, fromJson, fromCsv, loadStudents,
-           nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS,
+           nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });
