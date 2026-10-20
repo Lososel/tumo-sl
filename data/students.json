@@ -1,5 +1,5 @@
 {"fields":["name", "day", "time", "coach", "exCoach", "stage", "email"],
-"updated":"2026-10-20T12:44:32+00:00",
+"updated":"2026-10-20T17:33:33+00:00",
 "students":[
 ["Аскерұлы Есбер","Понедельник","10:30-12:30","Gulnaz","Gulnaz","Самообучение","askeruly.esber@tumo.world"],
 ["Дархан Аскаров","Понедельник","10:30-12:30","Gulnaz","Nazym","Самообучение","darkhan.askarov@tumo.world"],
@@ -1407,7 +1407,6 @@
 ["Куаныш Тамина Бауржанкызы","Вторник","16:30-18:30","Dana Telzhan","Gulim","Самообучение","tamina.kuanysh@tumo.world"],
 ["Куаныш Томирис Бауржанкызы","Вторник","16:30-18:30","Dana Telzhan","Gulim","Самообучение","tomiris.kuanysh@tumo.world"],
 ["Айдарқызы Анисаэлиф","Вторник","16:30-18:30","Elmira","Nazym","Самообучение","anisaelif.aidarkyzy@tumo.world"],
-["Жумашова Жибек Данияровна","Вторник","16:30-18:30","Elmira","Nazym","Самообучение","zhibek.zhumashova@tumo.world"],
 ["Жумабаева Аяулым Балтабековна","Вторник","16:30-18:30","Elmira","Elmira","Самообучение","ayaulym.zhumabayeva@tumo.world"],
 ["Майкибаев Альтаир Хамитжанович","Вторник","16:30-18:30","Elmira","Elmira","Самообучение","altair.maikibayev@tumo.world"],
 ["Аймақов Әбілмансұр Азатұлы","Вторник","16:30-18:30","Elmira","Elmira","Самообучение","abilmansur.aimakov@tumo.world"],
