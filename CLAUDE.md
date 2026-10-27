@@ -26,3 +26,5 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Never publish phones, IIN, birth dates, parent details or non-`@tumo.world` emails.
 - The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git.
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
+- Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
+  the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).

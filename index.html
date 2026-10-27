@@ -533,18 +533,32 @@
     'elmira':'shainurova.elmira@tumo.center',
     'dariga':'dariga.khassen@tumo.center'
   };
-  // Coach names on onboarding cards, spelled as tumo-onb-app's coach directory shows them
-  // (CoachDirectory.resolve over backend/data/coaches.json). Others: StudentData.coachName().
-  const COACH_DISPLAY = {
-    'ayaulym':'Аяулым', 'alen':'Ален', 'tahmina':'Тахмина', 'danel':'Данель',
-    'aruzhan torebek':'Аружан Төребек', 'dana kurak':'Дана Құрақ', 'dana telzhan':'Дана Телжан',
-    'dana akhmetova':'Дана Ахметова', 'dariga':'Дариға', 'nazym':'Назым', 'gulnaz':'Гулназ',
-    'almas':'Алмас', 'elmira':'Эльмира', 'nurai':'Нурай', 'alinur':'Әлинұр'
+  // Coach names on every card in Cyrillic: Russian spelling on the RU page, Kazakh on the KZ
+  // page (the sheet has them in Latin). Based on tumo-onb-app's coach directory
+  // (backend/data/coaches.json). Anyone not listed: StudentData.coachName() transliteration.
+  const COACH_NAMES = {
+    'gulnaz':          {ru:'Гульназ',         kz:'Гүлназ'},
+    'alinur':          {ru:'Алинур',          kz:'Әлінұр'},
+    'almas':           {ru:'Алмас',           kz:'Алмас'},
+    'nurai':           {ru:'Нурай',           kz:'Нұрай'},
+    'aruzhan':         {ru:'Аружан',          kz:'Аружан'},
+    'aruzhan torebek': {ru:'Аружан Торебек',  kz:'Аружан Төребек'},
+    'elmira':          {ru:'Эльмира',         kz:'Эльмира'},
+    'dariga':          {ru:'Дарига',          kz:'Дариға'},
+    'nazym':           {ru:'Назым',           kz:'Назым'},
+    'dana telzhan':    {ru:'Дана Тельжан',    kz:'Дана Телжан'},
+    'dana akhmetova':  {ru:'Дана Ахметова',   kz:'Дана Ахметова'},
+    'dana ahmetova':   {ru:'Дана Ахметова',   kz:'Дана Ахметова'},
+    'dana kurak':      {ru:'Дана Курак',      kz:'Дана Құрақ'},
+    'ayaulym':         {ru:'Аяулым',          kz:'Аяулым'},
+    'alen':            {ru:'Ален',            kz:'Ален'},
+    'danel':           {ru:'Данель',          kz:'Данель'},
+    'tahmina':         {ru:'Тахмина',         kz:'Тахмина'}
   };
-  function onboardingCoachName(rawCoach){
+  function displayCoachName(rawCoach){
     if(!rawCoach) return '';
-    const primary = rawCoach.split('(')[0].trim().toLowerCase();
-    return COACH_DISPLAY[primary] || StudentData.coachName(rawCoach, currentLang === 'kz' ? 'kk' : 'ru');
+    const known = COACH_NAMES[rawCoach.split('(')[0].trim().toLowerCase()];
+    return known ? known[currentLang] : StudentData.coachName(rawCoach, currentLang === 'kz' ? 'kk' : 'ru');
   }
   function coachEmail(rawCoach){
     if(!rawCoach) return '';
@@ -810,7 +824,7 @@
       <div class="facts">
         ${field(o.schedule, escapeHtml(schedule))}
         ${field(o.room, escapeHtml(r.room))}
-        ${field(o.coach, escapeHtml(onboardingCoachName(r.c)))}
+        ${field(o.coach, escapeHtml(displayCoachName(r.c)))}
         ${field(o.coachEmail, mail(email))}
         ${field(o.email, mail(r.email))}
       </div>
@@ -900,7 +914,7 @@
           </div>
           <div>
             <div class="fact-label">${t('factCoach')}</div>
-            <div class="fact-value">${escapeHtml(r.c) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(displayCoachName(r.c)) || t('comingSoon')}</div>
           </div>
           <div>
             <div class="fact-label">${t('factCoachEmail')}</div>
