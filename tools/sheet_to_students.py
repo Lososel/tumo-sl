@@ -15,7 +15,12 @@ Input: the workbook as .xlsx (all schedule tabs) or a CSV export of a single tab
 Inactive students are left out:
   - rows highlighted red (fill of the «ФИО ученика» cell; .xlsx only, a CSV has no colours);
   - rows whose notes/status columns («Причина ухода», «Ушел к коучу», unlabelled note
-    columns...) say "ignore", "self initiated", "лист ожидания" or "отчислен".
+    columns...) say the student left or is not attending now: "отказ", "отчислен", "ignore",
+    "self initiated", "не может/не сможет посещать", "приостановлено", "suspend", or a
+    waitlist for a later period ("ЛИСТ ОЖИДАНИЯ 2027", "лист ожидания лето/январь/ноябрь",
+    "на след./новый поток", "после НГ").
+    Kept: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
+    student attends now and only wants another slot.
   The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
   first asked for, not the student's current status.
 
@@ -41,7 +46,7 @@ from sync_schedule import (  # noqa: E402
 STAGE = "Самообучение"
 ONBOARDING_STAGE = "Онбординг"
 STREAM_TAB_RE = re.compile(r"^(\d+)\s*поток$", re.I)
-DEFAULT_STREAMS = ("4",)  # onboarding stream tabs to include, by number
+DEFAULT_STREAMS = ("4", "5")  # onboarding stream tabs to include, by number
 SLOT_BY_HOUR = {"10": "10:30-12:30", "14": "14:30-16:30", "16": "16:30-18:30"}
 TAB_RE = re.compile(r"^(ПН\s*ЧТ|ВТ\s*ПТ)\s*(\d{2})\d{2}$", re.I)
 DAYS_BY_PAIR = {"пнчт": {"Понедельник", "Четверг"}, "втпт": {"Вторник", "Пятница"}}
@@ -49,7 +54,13 @@ TUMO_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@tumo\.world$")
 
 # Notes/status columns checked for INACTIVE_RE (prefix match), plus columns with an empty header.
 NOTE_HEADERS = ("причина ухода", "ушел к коучу", "ушёл к коучу", "статус", "примечан", "коммент", "status", "notes")
-INACTIVE_RE = re.compile(r"ignore|self[\s-]*initiated|лист\s*ожидани|отчисл", re.I)
+_LATER = r"(?:20[2-3]\d|лет|зим|весн|осен|январ|феврал|март|ноябр|декабр|след|нов\w*\s+поток)"
+INACTIVE_RE = re.compile(
+    r"ignore|self[\s-]*initiated|отчисл|отказ|не\s+(?:может|сможет|будет)\s+посещать|приостанов|suspend"
+    r"|(?:лист\w*\s+ожидани\w*|waitlist|\bwl\b).*?" + _LATER +
+    r"|(?:след\w*|нов\w*)\s+поток|после\s+нг",
+    re.I,
+)
 
 
 def is_red(color):

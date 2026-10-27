@@ -132,8 +132,25 @@ class SheetToStudentsTest(unittest.TestCase):
         stats = {}
         students, _ = sts.parse(sts.read_tables(xlsx(tabs)), stats=stats)
         # «Расписание» with "(лист ожидания)" is the originally requested slot, not a status
-        self.assertEqual([s[0] for s in students], ["Пятый Ученик", "Шестой Ученик"])
-        self.assertEqual(stats, {"red": 0, "notes": 4})
+        self.assertEqual([s[0] for s in students], ["Пятый Ученик"])
+        self.assertEqual(stats, {"red": 0, "notes": 5})
+
+    def test_waitlist_notes_exclude_only_students_not_attending_now(self):
+        out = ["ЛИСТ ОЖИДАНИЯ 2027", "ЛИСТ ОЖИДАНИЯ ЛЕТО 2027", "лист ожидания ноябрь", "лист ожидания - лето",
+               "лист ожидания весна 2027", "Лист ожидания на ноябрь просит 16:30", "лист ожидания (16 30 в ноябре)",
+               "хотят на 16:30 на след поток", "на новый поток", "хотят после НГ начать обучение",
+               "не может посещать", "не сможет посещать, хочет в лист ожидания на лето", "отказ",
+               "лист ожидание, отказ", "приостановлено обучени в связи с лечением", "wants to suspend till next year",
+               "ignore", "self initiated", "отчислен"]
+        keep = ["лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "лист ожидания (хочет на 14:30)",
+                "лист ожидания хочет на 16:30", "хочет на 16:30 лист ожидания", "ЛИСТ ОЖИДАНИЯ СЛ",
+                "ЛИСТ ОЖИДАНИЯ 16:30", "wl 16:30 tue-fri", "хочет вт/пт 14:30", "не ответил",
+                "пока будет ходить 14:30, хочет на пн/чт 16:30-18:30 (можно на сл)", "ребенок не в городе",
+                "Новый коуч- отправить сообщение", "Almas Support must", "should be back in November"]
+        for note in out:
+            self.assertTrue(sts.INACTIVE_RE.search(note), note)
+        for note in keep:
+            self.assertFalse(sts.INACTIVE_RE.search(note), note)
 
     def test_is_red(self):
         from openpyxl.styles.colors import Color
@@ -162,7 +179,7 @@ class SheetToStudentsTest(unittest.TestCase):
                 "5 поток": [header, kid("Пятый Поток", "Вторник, Пятница : 14:30–16:30", "Danel", "", "")]}
         raw = xlsx(tabs, {("4 поток", 6): "FF0000"})
         stats = {}
-        students, problems = sts.parse(sts.read_tables(raw), stats=stats)
+        students, problems = sts.parse(sts.read_tables(raw, streams=("4",)), stats=stats)
         self.assertEqual(students, [
             ["Кумарбеков Диар", "Понедельник", "10:30-12:30", "Ayaulym", "", "Онбординг",
              "diar.kumarbekov@tumo.world", "3 этаж, 7 WR"],
@@ -173,8 +190,8 @@ class SheetToStudentsTest(unittest.TestCase):
         flat = repr(students)
         for private in ("Мама", "8700", "8777", "gmail", "01.02.2013"):
             self.assertNotIn(private, flat)
-        # other streams only when asked for
-        with_5 = sts.parse(sts.read_tables(raw, streams=("4", "5")))[0]
+        # 5 поток is included by default
+        with_5 = sts.parse(sts.read_tables(raw))[0]
         self.assertEqual(with_5[-1][:6], ["Пятый Поток", "Вторник", "14:30-16:30", "Danel", "", "Онбординг"])
 
     def test_html_login_page_is_rejected(self):

@@ -152,3 +152,15 @@ test('room (Кабинет) is read from rows and from the «Зона обуче
   const [csvRec] = S.fromCsv('ФИО,День SL,Время,Зона обучения\nКумарбеков Диар,Понедельник,10:30,3 этаж 7 WR\n');
   assert.strictEqual(csvRec.room, '3 этаж 7 WR');
 });
+
+test('coachName shows coach names in Cyrillic like tumo-onb-app', () => {
+  assert.strictEqual(S.coachName('Dana Akhmetova', 'ru'), 'Дана Ахметова');
+  assert.strictEqual(S.coachName('Alinur', 'kk'), 'Әлінұр');
+  assert.strictEqual(S.coachName('Alinur', 'ru'), 'Алинур');
+  assert.strictEqual(S.coachName('Ayaulym', 'ru'), 'Аяулым');
+  assert.strictEqual(S.coachName('Aruzhan Torebek', 'ru'), 'Аружан Торебек');
+  assert.strictEqual(S.coachName('Tahmina', 'ru'), 'Тахмина');
+  assert.strictEqual(S.coachName('Gulim (+Dana Kurak)', 'kk'), 'Гүлім (+Дана Курак)');
+  assert.strictEqual(S.coachName('Назым', 'ru'), 'Назым');
+  assert.strictEqual(S.coachName('', 'ru'), '');
+});
