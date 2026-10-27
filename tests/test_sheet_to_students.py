@@ -56,8 +56,8 @@ class SheetToStudentsTest(unittest.TestCase):
         students, problems = sts.parse(sts.read_tables(raw))
         self.assertEqual(students, [
             ["Батыржан Нұрали Амангелдіұлы", "Четверг", "10:30-12:30", "Aruzhan Torebek", "Gulnaz",
-             "Самообучение", "batyrzhan.n@tumo.world", ""],
-            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", ""],
+             "Самообучение", "batyrzhan.n@tumo.world", "", ""],
+            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", ""],
         ])
         self.assertEqual(len(problems), 1)
         self.assertIn("Сломанный День", problems[0])
@@ -95,26 +95,46 @@ class SheetToStudentsTest(unittest.TestCase):
         students, _ = sts.parse(sts.read_tables(raw))
         self.assertEqual(students[0][0], "Төлеуғазы Алдияр")
 
-    def test_red_rows_are_excluded(self):
+    def test_row_colours_give_the_status(self):
         tabs = {"ВТ ПТ 1430": [HEADER,
-                               row("Активный Ученик", "Вторник", "Almas", "Almas"),
-                               row("Красный Ученик", "Пятница", "Almas", "Almas"),
+                               row("Активный Ученик", "Вторник", "Almas", "Almas", email="a@tumo.world"),
+                               row("Красный Ученик", "Пятница", "Almas", "Almas", email="r@tumo.world"),
                                row("Светло Красный", "Пятница", "Almas", "Almas"),
                                row("Оранжевый Ученик", "Вторник", "Almas", "Almas"),
-                               row("Жёлтый Ученик", "Вторник", "Almas", "Almas")]}
+                               row("Жёлтый Ученик", "Вторник", "Almas", "Almas"),
+                               row("Фиолетовый Ученик", "Вторник", "Almas", "Almas", email="p@tumo.world"),
+                               row("Тёмно Фиолетовый", "Вторник", "Almas", "Almas"),
+                               row("Светло Фиолетовый", "Вторник", "Almas", "Almas"),
+                               row("Пурпурный Ученик", "Вторник", "Almas", "Almas")]}
         fills = {("ВТ ПТ 1430", 3): "FF0000", ("ВТ ПТ 1430", 4): "E06666",
-                 ("ВТ ПТ 1430", 5): "FF9900", ("ВТ ПТ 1430", 6): "FFFF00"}
+                 ("ВТ ПТ 1430", 5): "FF9900", ("ВТ ПТ 1430", 6): "FFFF00",
+                 ("ВТ ПТ 1430", 7): "9900FF", ("ВТ ПТ 1430", 8): "674EA7",
+                 ("ВТ ПТ 1430", 9): "B4A7D6", ("ВТ ПТ 1430", 10): "FF00FF"}
         stats = {}
         students, _ = sts.parse(sts.read_tables(xlsx(tabs, fills)), stats=stats)
-        self.assertEqual([s[0] for s in students], ["Активный Ученик", "Оранжевый Ученик", "Жёлтый Ученик"])
-        self.assertEqual(stats, {"red": 2, "notes": 0})
+        status = {s[0]: s[8] for s in students}
+        self.assertEqual(status, {"Активный Ученик": "", "Красный Ученик": "inactive", "Светло Красный": "inactive",
+                                  "Оранжевый Ученик": "", "Жёлтый Ученик": "", "Фиолетовый Ученик": "waitlist",
+                                  "Тёмно Фиолетовый": "waitlist", "Светло Фиолетовый": "", "Пурпурный Ученик": ""})
+        # inactive / waitlist rows keep only the name and stage
+        red = next(s for s in students if s[0] == "Красный Ученик")
+        self.assertEqual(red, ["Красный Ученик", "", "", "", "", "Самообучение", "", "", "inactive"])
+        purple = next(s for s in students if s[0] == "Фиолетовый Ученик")
+        self.assertEqual(purple, ["Фиолетовый Ученик", "", "", "", "", "Самообучение", "", "", "waitlist"])
+        self.assertEqual(stats, {"red": 2, "purple": 2, "notes_inactive": 0, "notes_waitlist": 0})
 
-    def test_red_old_row_of_a_moved_student_is_dropped(self):
+    def test_active_row_wins_over_red_or_purple_old_row(self):
         tabs = {"ПН ЧТ 1030": [HEADER, row("Сара Мухтар", "Понедельник", "Gulnaz", "Gulnaz")],
-                "ВТ ПТ 1430": [HEADER, row("Сара Мухтар", "Пятница", "Gulnaz", "Alinur")]}
-        students, problems = sts.parse(sts.read_tables(xlsx(tabs, {("ПН ЧТ 1030", 2): "FF0000"})))
-        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", "", ""]])
-        self.assertEqual(problems, [])  # no duplicate left to resolve
+                "ВТ ПТ 1430": [HEADER, row("Сара Мухтар", "Пятница", "Gulnaz", "Alinur")],
+                "ВТ ПТ 1630": [HEADER, row("Сара Мухтар", "Вторник", "Gulnaz", "Gulnaz")]}
+        fills = {("ПН ЧТ 1030", 2): "FF0000", ("ВТ ПТ 1630", 2): "9900FF"}
+        students, problems = sts.parse(sts.read_tables(xlsx(tabs, fills)))
+        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", "", "", ""]])
+        self.assertEqual(problems, [])  # an old red/purple copy is not an ambiguity
+        # only red + purple rows: waitlist wins over inactive
+        only_old = {k: v for k, v in tabs.items() if k != "ВТ ПТ 1430"}
+        students, _ = sts.parse(sts.read_tables(xlsx(only_old, fills)))
+        self.assertEqual(students[0][8], "waitlist")
 
     def test_inactive_keywords_in_notes_columns(self):
         header = HEADER + [None]  # an unlabelled note column after «Причина ухода»
@@ -132,8 +152,10 @@ class SheetToStudentsTest(unittest.TestCase):
         stats = {}
         students, _ = sts.parse(sts.read_tables(xlsx(tabs)), stats=stats)
         # «Расписание» with "(лист ожидания)" is the originally requested slot, not a status
-        self.assertEqual([s[0] for s in students], ["Пятый Ученик"])
-        self.assertEqual(stats, {"red": 0, "notes": 5})
+        self.assertEqual({s[0]: s[8] for s in students}, {
+            "Первый Ученик": "inactive", "Второй Ученик": "inactive", "Третий Ученик": "waitlist",
+            "Четвёртый Ученик": "inactive", "Пятый Ученик": "", "Шестой Ученик": "inactive"})
+        self.assertEqual(stats, {"red": 0, "purple": 0, "notes_inactive": 4, "notes_waitlist": 1})
 
     def test_waitlist_notes_exclude_only_students_not_attending_now(self):
         out = ["ЛИСТ ОЖИДАНИЯ 2027", "ЛИСТ ОЖИДАНИЯ ЛЕТО 2027", "лист ожидания ноябрь", "лист ожидания - лето",
@@ -151,6 +173,13 @@ class SheetToStudentsTest(unittest.TestCase):
             self.assertTrue(sts.INACTIVE_RE.search(note), note)
         for note in keep:
             self.assertFalse(sts.INACTIVE_RE.search(note), note)
+            self.assertEqual(sts.note_status(note), "", note)
+        # left -> inactive (red-row message); paused / later waitlist -> waitlist (suspended message)
+        for note in ("отказ", "лист ожидание, отказ", "не может посещать", "ignore", "self initiated", "отчислен"):
+            self.assertEqual(sts.note_status(note), "inactive", note)
+        for note in ("ЛИСТ ОЖИДАНИЯ 2027", "лист ожидания ноябрь", "приостановлено обучени", "на новый поток",
+                     "wants to suspend till next year", "хотят после НГ начать обучение"):
+            self.assertEqual(sts.note_status(note), "waitlist", note)
 
     def test_is_red(self):
         from openpyxl.styles.colors import Color
@@ -182,11 +211,13 @@ class SheetToStudentsTest(unittest.TestCase):
         students, problems = sts.parse(sts.read_tables(raw, streams=("4",)), stats=stats)
         self.assertEqual(students, [
             ["Кумарбеков Диар", "Понедельник", "10:30-12:30", "Ayaulym", "", "Онбординг",
-             "diar.kumarbekov@tumo.world", "3 этаж, 7 WR"],
-            ["Салибек Айша", "Вторник", "16:30-18:30", "Aruzhan Torebek", "", "Онбординг", "", "2 этаж, зона SL"],
+             "diar.kumarbekov@tumo.world", "3 этаж, 7 WR", ""],
+            ["Салибек Айша", "Вторник", "16:30-18:30", "Aruzhan Torebek", "", "Онбординг", "", "2 этаж, зона SL", ""],
+            ["Ушедший Ученик", "", "", "", "", "Онбординг", "", "", "waitlist"],
+            ["Красный Ученик", "", "", "", "", "Онбординг", "", "", "inactive"],
         ])
         self.assertEqual(problems, [])
-        self.assertEqual(stats, {"red": 1, "notes": 1})
+        self.assertEqual(stats, {"red": 1, "purple": 0, "notes_inactive": 0, "notes_waitlist": 1})
         flat = repr(students)
         for private in ("Мама", "8700", "8777", "gmail", "01.02.2013"):
             self.assertNotIn(private, flat)

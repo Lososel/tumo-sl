@@ -174,13 +174,14 @@
       ex: properCase(o.exCoach),
       stage: cleanText(o.stage) || DEFAULT_STAGE,
       email: cleanText(o.email).toLowerCase(),
-      room: cleanText(o.room)
+      room: cleanText(o.room),
+      status: cleanText(o.status).toLowerCase() // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
     };
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email, room]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status]
   function fromRow(r) {
-    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7] });
+    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7], status: r[8] });
   }
 
   const HEADER_ALIASES = {

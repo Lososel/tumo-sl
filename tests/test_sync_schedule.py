@@ -30,7 +30,7 @@ class StudentsJsonTest(unittest.TestCase):
             self.assertEqual(payload["fields"], ss.STUDENT_FIELDS)
             self.assertEqual(
                 ss.load_student_data(path),
-                [["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", ""]],
+                [["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", ""]],
             )
 
     def test_updated_is_a_utc_timestamp(self):
@@ -49,6 +49,10 @@ class StudentsJsonTest(unittest.TestCase):
         for rec in data:
             self.assertEqual(len(rec), len(ss.STUDENT_FIELDS))
             self.assertEqual(rec[0], ss.proper_case(rec[0]))
+            if rec[8]:  # inactive / waitlist: name only
+                self.assertIn(rec[8], ("inactive", "waitlist"))
+                self.assertEqual(rec[1:5] + rec[6:8], ["", "", "", "", "", ""])
+                continue
             self.assertIn(rec[1], ss.DAYS_OK + ["Среда"])
             self.assertIn(rec[2], ss.TIMES_OK)
 

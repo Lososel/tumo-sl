@@ -180,6 +180,11 @@
   }
   /* ---------- onboarding card (tumo-onb-app ScheduleCard.vue) ---------- */
   .badge.onboarding{background:var(--purple-tint);color:#9b47b0;}
+  .badge.inactive{background:#fef2f2;color:#b91c1c;}   /* red row in the sheet */
+  .badge.waitlist{background:#fffbeb;color:#b45309;}   /* dark purple row; amber as tumo-onb-app's waitlist */
+  .status-note{margin-top:4px;border-radius:16px;padding:14px 20px;font-size:15.2px;color:var(--text);background:#f0f9ff;}
+  .status-wa{display:inline-flex;margin-top:16px;background:#5bc96f;color:#fff;font-weight:700;font-size:16px;text-decoration:none;padding:10px 24px;border-radius:999px;}
+  .status-wa:hover{background:#49b95d;}
   .pw-box{margin-top:24px;border:1px solid var(--purple-line);background:var(--purple-tint);border-radius:16px;padding:clamp(16px,2.5vw,20px);}
   .pw-row{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;}
   .pw-code{flex:1;min-width:0;overflow-x:auto;background:#fff;border-radius:12px;padding:10px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:18px;letter-spacing:.05em;white-space:nowrap;color:var(--black);user-select:all;}
@@ -597,6 +602,10 @@
       tooMany:'Найдено несколько совпадений. Введите имя и фамилию полностью, чтобы уточнить поиск.',
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
       updatedAt:(date)=>`Данные обновлены: ${date}`,
+      // red row / dark purple row in the master sheet
+      statusInactive:{ badge:'Неактивен', text:'Если вы хотите продолжить обучение в TUMO, свяжитесь с нами через WhatsApp.' },
+      statusWaitlist:{ badge:'Лист ожидания', text:'Сейчас ваш аккаунт приостановлен. Ожидайте обновления информации о вашем месте в TUMO или свяжитесь с нами через WhatsApp.' },
+      statusWaText:(name)=>`Здравствуйте! Хочу уточнить статус обучения в TUMO. ФИО ученика: ${name}`,
       // onboarding card: texts of tumo-onb-app (frontend/src/locales/ru.ts, card.*)
       onb:{ badge:'Онбординг', schedule:'График обучения', coach:'Коуч', coachEmail:'Почта коуча', room:'Кабинет',
             email:'Почта TUMO ученика', password:'Временный пароль для входа', copy:'Копировать пароль', copied:'Скопировано',
@@ -651,6 +660,9 @@
       tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
       updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
+      statusInactive:{ badge:'Белсенді емес', text:'TUMO-да оқуды жалғастырғыңыз келсе, бізбен WhatsApp арқылы байланысыңыз.' },
+      statusWaitlist:{ badge:'Күту тізімі', text:'Қазір аккаунтыңыз уақытша тоқтатылған. TUMO-дағы орныңыз туралы жаңартуды күтіңіз немесе бізбен WhatsApp арқылы байланысыңыз.' },
+      statusWaText:(name)=>`Сәлеметсіз бе! TUMO-дағы оқу мәртебесін нақтылағым келеді. Оқушының аты-жөні: ${name}`,
       onb:{ badge:'Онбординг', schedule:'Оқу кестесі', coach:'Коуч', coachEmail:'Коуч поштасы', room:'Кабинет',
             email:'Оқушының TUMO поштасы', password:'Кіруге арналған уақытша құпия сөз', copy:'Құпия сөзді көшіру', copied:'Көшірілді',
             waTitle:'WhatsApp қауымдастығы', waDays:{pn_cht:'Дс/Бс', vt_pt:'Сс/Жм'},
@@ -770,6 +782,19 @@
     results.appendChild(el);
   }
 
+  // Red row (inactive) / dark purple row (waitlist): only the name, the status and how to
+  // get in touch. No schedule, coach or email.
+  function statusCardHtml(r){
+    const s = t(r.status === 'inactive' ? 'statusInactive' : 'statusWaitlist');
+    const wa = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(t('statusWaText')(r.n))}`;
+    return `
+      <span class="badge ${r.status}">${s.badge}</span>
+      <h3>${escapeHtml(r.n)}</h3>
+      <div class="status-note">${s.text}</div>
+      <a class="status-wa" href="${wa}" target="_blank" rel="noopener">${t('contactBtn')}</a>
+    `;
+  }
+
   // Onboarding card, laid out like tumo-onb-app's ScheduleCard.vue: «Онбординг» badge, then
   // График обучения | Кабинет, Коуч | Почта коуча, Почта TUMO ученика, the temporary password
   // with a copy button, and the slot's WhatsApp community. No SL day / coach-change elements.
@@ -848,6 +873,11 @@
       const group = GROUP_LINKS[gKey];
       const card = document.createElement('div');
       card.className = 'card';
+      if(r.status === 'inactive' || r.status === 'waitlist'){
+        card.innerHTML = statusCardHtml(r);
+        results.appendChild(card);
+        return;
+      }
       if(onboarding){
         card.innerHTML = onboardingCardHtml(r, index, email, group);
         results.appendChild(card);
@@ -875,10 +905,6 @@
           <div>
             <div class="fact-label">${t('factCoachEmail')}</div>
             <div class="fact-value">${email ? `<a href="mailto:${email}">${email}</a>` : t('comingSoon')}</div>
-          </div>
-          <div>
-            <div class="fact-label">${t('factStudentEmail')}</div>
-            <div class="fact-value">${r.email ? `<a href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a>` : t('comingSoon')}</div>
           </div>
           <div>
             <div class="fact-label">${t('factStage')}</div>
