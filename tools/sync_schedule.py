@@ -24,7 +24,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_HTML = REPO_ROOT / "index.html"
 STUDENTS_JSON = REPO_ROOT / "data" / "students.json"
-STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email"]
+STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room"]
 REPORTS_DIR = REPO_ROOT / "reports"
 
 DAYS_OK = ["Понедельник", "Вторник", "Четверг", "Пятница"]
@@ -49,6 +49,12 @@ CYR_TO_LATIN_COACH = {
     "аружан": "Aruzhan",
     "аружан т": "Aruzhan Torebek",
     "аружан торебек": "Aruzhan Torebek",
+    "aruzhan t": "Aruzhan Torebek",
+    "аяулым": "Ayaulym",
+    "ален": "Alen",
+    "данел": "Danel",
+    "данель": "Danel",
+    "тахмина": "Tahmina",
     "акбота": "Akbota",
     "дана ахметова": "Dana Akhmetova",
     "дана телжан": "Dana Telzhan",

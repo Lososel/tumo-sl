@@ -124,13 +124,14 @@
       c: properCase(o.coach),
       ex: properCase(o.exCoach),
       stage: cleanText(o.stage) || DEFAULT_STAGE,
-      email: cleanText(o.email).toLowerCase()
+      email: cleanText(o.email).toLowerCase(),
+      room: cleanText(o.room)
     };
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room]
   function fromRow(r) {
-    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6] });
+    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7] });
   }
 
   const HEADER_ALIASES = {
@@ -140,7 +141,8 @@
     coach: ['новый коуч sl', 'коуч sl', 'коуч', 'coach', 'new coach'],
     exCoach: ['ex-coach', 'ex coach', 'прежний коуч', 'старый коуч'],
     stage: ['этап', 'этап обучения', 'stage'],
-    email: ['почта tumo ученика', 'почта ученика', 'почта tumo', 'почта', 'email', 'e-mail', 'student email']
+    email: ['почта tumo ученика', 'почта ученика', 'почта tumo', 'почта', 'email', 'e-mail', 'student email'],
+    room: ['зона обучения', 'кабинет', 'room']
   };
 
   function headerMap(headers) {
@@ -183,7 +185,7 @@
     if (map.name === undefined) throw new Error('CSV: колонка с ФИО не найдена');
     return rows.slice(1).map(r => makeRecord({
       name: r[map.name], day: r[map.day], time: r[map.time], coach: r[map.coach],
-      exCoach: r[map.exCoach], stage: r[map.stage], email: r[map.email]
+      exCoach: r[map.exCoach], stage: r[map.stage], email: r[map.email], room: r[map.room]
     })).filter(Boolean);
   }
 

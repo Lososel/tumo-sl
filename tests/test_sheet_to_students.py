@@ -56,8 +56,8 @@ class SheetToStudentsTest(unittest.TestCase):
         students, problems = sts.parse(sts.read_tables(raw))
         self.assertEqual(students, [
             ["Батыржан Нұрали Амангелдіұлы", "Четверг", "10:30-12:30", "Aruzhan Torebek", "Gulnaz",
-             "Самообучение", "batyrzhan.n@tumo.world"],
-            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", ""],
+             "Самообучение", "batyrzhan.n@tumo.world", ""],
+            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", ""],
         ])
         self.assertEqual(len(problems), 1)
         self.assertIn("Сломанный День", problems[0])
@@ -113,7 +113,7 @@ class SheetToStudentsTest(unittest.TestCase):
         tabs = {"ПН ЧТ 1030": [HEADER, row("Сара Мухтар", "Понедельник", "Gulnaz", "Gulnaz")],
                 "ВТ ПТ 1430": [HEADER, row("Сара Мухтар", "Пятница", "Gulnaz", "Alinur")]}
         students, problems = sts.parse(sts.read_tables(xlsx(tabs, {("ПН ЧТ 1030", 2): "FF0000"})))
-        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", ""]])
+        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", "", ""]])
         self.assertEqual(problems, [])  # no duplicate left to resolve
 
     def test_inactive_keywords_in_notes_columns(self):
@@ -144,6 +144,38 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertTrue(sts.is_red(Color(indexed=10)))   # palette red
         self.assertFalse(sts.is_red(Color(theme=5)))     # theme colours aren't resolved
         self.assertFalse(sts.is_red(None))
+
+    def test_onboarding_stream_tab(self):
+        header = ["", "Номер родителя", "почта родителя", "ФИО ребенка", "Номер ребенка", "ДР ребенка",
+                  "Расписание", "Коуч", "", "Зона обучения", "Почта тумо", "Создан аккаунт с графиком и коучем", ""]
+        def kid(name, sched, coach, room, email, note=""):
+            return ["Мама Ученика", "87001234567", "mama@gmail.com", name, "87770001122", "01.02.2013",
+                    sched, coach, None, room, email, "True", note]
+        tabs = {"4 поток": [header,
+                            ["Понедельник, Четверг : 10:30–12:30"] + [None] * 12,  # section title row
+                            kid("КУМАРБЕКОВ ДИАР", "Понедельник, Четверг : 10:30–12:30", "Ayaulym", "3 этаж, 7 WR",
+                                "Diar.Kumarbekov@tumo.world"),
+                            kid("Салибек Айша", " Вторник, Пятница : 16:30–18:30 ", "Aruzhan T", "2 этаж, зона SL", ""),
+                            kid("Ушедший Ученик", "Вторник, Пятница : 14:30–16:30", "Alen", "3 этаж, 9 WR", "",
+                                note="лист ожидания ноябрь"),
+                            kid("Красный Ученик", "Вторник, Пятница : 14:30–16:30", "Alen", "3 этаж, 9 WR", "")],
+                "5 поток": [header, kid("Пятый Поток", "Вторник, Пятница : 14:30–16:30", "Danel", "", "")]}
+        raw = xlsx(tabs, {("4 поток", 6): "FF0000"})
+        stats = {}
+        students, problems = sts.parse(sts.read_tables(raw), stats=stats)
+        self.assertEqual(students, [
+            ["Кумарбеков Диар", "Понедельник", "10:30-12:30", "Ayaulym", "", "Онбординг",
+             "diar.kumarbekov@tumo.world", "3 этаж, 7 WR"],
+            ["Салибек Айша", "Вторник", "16:30-18:30", "Aruzhan Torebek", "", "Онбординг", "", "2 этаж, зона SL"],
+        ])
+        self.assertEqual(problems, [])
+        self.assertEqual(stats, {"red": 1, "notes": 1})
+        flat = repr(students)
+        for private in ("Мама", "8700", "8777", "gmail", "01.02.2013"):
+            self.assertNotIn(private, flat)
+        # other streams only when asked for
+        with_5 = sts.parse(sts.read_tables(raw, streams=("4", "5")))[0]
+        self.assertEqual(with_5[-1][:6], ["Пятый Поток", "Вторник", "14:30-16:30", "Danel", "", "Онбординг"])
 
     def test_html_login_page_is_rejected(self):
         with self.assertRaises(SystemExit):

@@ -508,6 +508,11 @@
     'aruzhan':'khamzina.aruzhan@tumo.center',
     'aruzhan torebek':'torebek.aruzhan@tumo.center',
     'nurai':'nurai.ergazyeva@tumo.center',
+    // onboarding coaches (4 поток), emails from tumo-onb-app backend/data/coaches.json
+    'ayaulym':'kenessova.ayaulym@tumo.center',
+    'alen':'zhumagali.alen@tumo.center',
+    'danel':'danel.kanbakova@tumo.center',
+    'tahmina':'t.kabylbek@tumo.center',
     'almas':'almas.musalimov@tumo.center',
     'elmira':'shainurova.elmira@tumo.center',
     'dariga':'dariga.khassen@tumo.center'
@@ -549,8 +554,10 @@
     'Воскресенье': {ru:'Воскресенье', kz:'Жексенбі'}
   };
   const STAGE_TR = {
-    'Самообучение': {ru:'Самообучение', kz:'Өзіндік оқу'}
+    'Самообучение': {ru:'Самообучение', kz:'Өзіндік оқу'},
+    'Онбординг':    {ru:'Онбординг',    kz:'Онбординг'}
   };
+  const ONBOARDING = 'Онбординг';
 
   const I18N = {
     ru:{
@@ -565,7 +572,7 @@
       updatedAt:(date)=>`Данные обновлены: ${date}`,
       searchBtn:'Найти',
       searchPlaceholder:'Имя и фамилия учащегося...',
-      factSchedule:'график обучения', factMainDay:'основной день самообучения', factCoach:'коуч', factCoachEmail:'email коуча', factStage:'этап обучения',
+      factSchedule:'график обучения', factMainDay:'основной день самообучения', factCoach:'коуч', factCoachEmail:'email коуча', factStage:'этап обучения', factRoom:'кабинет',
       factStudentEmail:'ПОЧТА TUMO ученика',
       comingSoon:'Скоро появится',
       dataLoading:'Загружаем список учеников…',
@@ -614,7 +621,7 @@
       updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
       searchBtn:'Табу',
       searchPlaceholder:'Оқушының аты-жөні...',
-      factSchedule:'оқу кестесі', factMainDay:'негізгі өзіндік оқу күні', factCoach:'коуч', factCoachEmail:'коучтың email-і', factStage:'оқу кезеңі',
+      factSchedule:'оқу кестесі', factMainDay:'негізгі өзіндік оқу күні', factCoach:'коуч', factCoachEmail:'коучтың email-і', factStage:'оқу кезеңі', factRoom:'кабинет',
       factStudentEmail:'Оқушының TUMO поштасы',
       comingSoon:'Жақында пайда болады',
       dataLoading:'Оқушылар тізімі жүктелуде…',
@@ -741,7 +748,9 @@
       results.appendChild(hint);
     }
     list.forEach((r, index) => {
-      const changed = r.c && r.ex && r.c !== r.ex;
+      // Onboarding (4 поток): no main SL day yet and no coach change to report.
+      const onboarding = r.stage === ONBOARDING;
+      const changed = !onboarding && r.c && r.ex && r.c !== r.ex;
       const noCoach = !r.c;
       const email = coachEmail(r.c);
       const gKey = groupKeyFor(r.d, r.t);
@@ -749,7 +758,7 @@
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        <span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>
+        ${onboarding && !noCoach ? '' : `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
         <h3>${escapeHtml(r.n)}</h3>
         <div class="facts">
           <div>
@@ -758,7 +767,7 @@
           </div>
           <div>
             <div class="fact-label">${t('factMainDay')}</div>
-            <div class="fact-value">${trDay(r.d)}</div>
+            <div class="fact-value">${onboarding ? t('comingSoon') : trDay(r.d)}</div>
           </div>
           <div>
             <div class="fact-label">${t('factCoach')}</div>
@@ -776,10 +785,14 @@
             <div class="fact-label">${t('factStage')}</div>
             <div class="fact-value">${escapeHtml(trStage(r.stage)) || t('comingSoon')}</div>
           </div>
+          ${r.room ? `<div>
+            <div class="fact-label">${t('factRoom')}</div>
+            <div class="fact-value">${escapeHtml(r.room)}</div>
+          </div>` : ''}
         </div>
         ${noCoach
           ? `<div class="note warn">${t('noteWarn')}</div>`
-          : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`)
+          : (onboarding ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
         }
         <div class="note info">${t('noteWorkshop')}</div>
         ${group ? `
