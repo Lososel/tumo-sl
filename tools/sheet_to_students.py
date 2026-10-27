@@ -12,15 +12,20 @@ Input: the workbook as .xlsx (all schedule tabs) or a CSV export of a single tab
     days and slot from «Расписание», coach from «Коуч», room from «Зона обучения», stage «Онбординг».
   - csv:  the time slot is taken from "Новое расписание" or "Расписание".
 
-Inactive students are left out:
-  - rows highlighted red (fill of the «ФИО ученика» cell; .xlsx only, a CSV has no colours);
-  - rows whose notes/status columns («Причина ухода», «Ушел к коучу», unlabelled note
-    columns...) say the student left or is not attending now: "отказ", "отчислен", "ignore",
-    "self initiated", "не может/не сможет посещать", "приостановлено", "suspend", or a
-    waitlist for a later period ("ЛИСТ ОЖИДАНИЯ 2027", "лист ожидания лето/январь/ноябрь",
-    "на след./новый поток", "после НГ").
-    Kept: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
+Status of a student (row colour = fill of the «ФИО» cell; .xlsx only, a CSV has no colours):
+  - RED row -> "inactive": the student left. The site shows only the name and «Если вы
+    хотите продолжить обучение в TUMO, свяжитесь с нами через WhatsApp».
+  - DARK PURPLE row (#9900FF, #674EA7, #351C75...) -> "waitlist": the account is suspended
+    for now. The site shows only the name and «Сейчас ваш аккаунт приостановлен…».
+    Light purples (#B4A7D6, #D9D2E9) are room groups in the "N поток" tabs, not a status.
+  - Notes/status columns («Причина ухода», «Ушел к коучу», unlabelled note columns...):
+    "отказ", "отчислен", "ignore", "self initiated", "не может/не сможет посещать" ->
+    "inactive"; "приостановлено", "suspend", or a waitlist for a later period ("ЛИСТ
+    ОЖИДАНИЯ 2027", "лист ожидания лето/январь/ноябрь", "на след./новый поток", "после НГ")
+    -> "waitlist".
+    Active: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
     student attends now and only wants another slot.
+  Inactive/waitlist rows keep only the name (no schedule, coach or email).
   The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
   first asked for, not the student's current status.
 
@@ -55,12 +60,25 @@ TUMO_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@tumo\.world$")
 # Notes/status columns checked for INACTIVE_RE (prefix match), plus columns with an empty header.
 NOTE_HEADERS = ("причина ухода", "ушел к коучу", "ушёл к коучу", "статус", "примечан", "коммент", "status", "notes")
 _LATER = r"(?:20[2-3]\d|лет|зим|весн|осен|январ|феврал|март|ноябр|декабр|след|нов\w*\s+поток)"
-INACTIVE_RE = re.compile(
-    r"ignore|self[\s-]*initiated|отчисл|отказ|не\s+(?:может|сможет|будет)\s+посещать|приостанов|suspend"
+DROPPED_RE = re.compile(
+    r"ignore|self[\s-]*initiated|отчисл|отказ|не\s+(?:может|сможет|будет)\s+посещать", re.I)
+PAUSED_RE = re.compile(
+    r"приостанов|suspend"
     r"|(?:лист\w*\s+ожидани\w*|waitlist|\bwl\b).*?" + _LATER +
     r"|(?:след\w*|нов\w*)\s+поток|после\s+нг",
     re.I,
 )
+INACTIVE_RE = re.compile(DROPPED_RE.pattern + "|" + PAUSED_RE.pattern, re.I)  # any non-active note
+INACTIVE, WAITLIST = "inactive", "waitlist"
+STATUS_RANK = {"": 0, WAITLIST: 1, INACTIVE: 2}  # a student in several rows: the most active wins
+
+
+def note_status(text):
+    if DROPPED_RE.search(text):
+        return INACTIVE
+    if PAUSED_RE.search(text):
+        return WAITLIST
+    return ""
 
 
 def is_red(color):
@@ -82,11 +100,52 @@ def is_red(color):
     return r >= 200 and g <= 115 and b <= 115 and r - max(g, b) >= 90
 
 
-def red_fill(cell):
+def _rgb(color):
+    if color is None:
+        return None
+    rgb = None
+    if color.type == "rgb" and isinstance(color.rgb, str):
+        rgb = color.rgb[-6:]
+    elif color.type == "indexed" and color.indexed is not None:
+        from openpyxl.styles.colors import COLOR_INDEX
+
+        if 0 <= color.indexed < len(COLOR_INDEX):
+            rgb = COLOR_INDEX[color.indexed][-6:]
+    if not rgb or not re.fullmatch(r"[0-9A-Fa-f]{6}", rgb):
+        return None
+    return tuple(int(rgb[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def is_dark_purple(color):
+    """#9900FF (Sheets "purple"), #674EA7 / #351C75 ("dark purple 1/2") -> True. Light purples
+    (#B4A7D6, #D9D2E9: room groups), magenta (#FF00FF) and blues -> False."""
+    import colorsys
+
+    rgb = _rgb(color)
+    if rgb is None:
+        return False
+    h, l, s = colorsys.rgb_to_hls(*(v / 255 for v in rgb))
+    return 0.70 <= h <= 0.80 and s >= 0.35 and l <= 0.55
+
+
+def _fill_colors(cell):
     fill = getattr(cell, "fill", None)
     if fill is None or fill.fill_type in (None, "none"):
-        return False
-    return is_red(fill.fgColor) or is_red(fill.start_color)
+        return ()
+    return (fill.fgColor, fill.start_color)
+
+
+def red_fill(cell):
+    return any(is_red(c) for c in _fill_colors(cell))
+
+
+def fill_status(cell):
+    colors = _fill_colors(cell)
+    if any(is_red(c) for c in colors):
+        return INACTIVE
+    if any(is_dark_purple(c) for c in colors):
+        return WAITLIST
+    return ""
 
 
 # Column header (lowercased, prefix match) -> field. Anything else in the sheet is ignored.
@@ -144,8 +203,8 @@ def stream_of(tab):
 
 
 def read_tables(raw, streams=DEFAULT_STREAMS):
-    """bytes -> [(tab_name or None, rows, red)] where red[i] says row i is highlighted red
-    (its «ФИО ученика» cell, or the first cell if the tab has no such column). CSV: red is None."""
+    """bytes -> [(tab_name or None, rows, colors)] where colors[i] is the status the fill of
+    row i's «ФИО» cell stands for: "inactive" (red), "waitlist" (dark purple) or "". CSV: None."""
     if raw[:2] == b"PK":
         import openpyxl
 
@@ -161,7 +220,7 @@ def read_tables(raw, streams=DEFAULT_STREAMS):
                 if i == 0:
                     name_col = map_header(values).get("name", 0)
                 rows.append(values)
-                red.append(i > 0 and name_col < len(cells) and red_fill(cells[name_col]))
+                red.append(fill_status(cells[name_col]) if i > 0 and name_col < len(cells) else "")
             tables.append((ws.title.strip(), rows, red))
         return tables
     text = raw.decode("utf-8-sig")
@@ -182,8 +241,13 @@ def note_columns(header, name_col):
 
 def pick_duplicate(cands, published):
     """A student listed in several tabs (usually moved between slots). Prefer, in order:
-    the row whose "Новое расписание" confirms its tab slot, the row matching what is
-    published now (so an ambiguous sheet doesn't flip the schedule), then the last row."""
+    an active row over a waitlist row over an inactive one, the row whose "Новое расписание"
+    confirms its tab slot, the row matching what is published now (so an ambiguous sheet
+    doesn't flip the schedule), then the last row."""
+    best = min(STATUS_RANK[c["rec"][8]] for c in cands)
+    cands = [c for c in cands if STATUS_RANK[c["rec"][8]] == best]
+    if len(cands) == 1:
+        return cands[0]
     confirmed = [c for c in cands if c["confirmed"]]
     if len(confirmed) == 1:
         return confirmed[0]
@@ -196,14 +260,14 @@ def pick_duplicate(cands, published):
 
 def parse(tables, published=None, stats=None):
     """-> (students, problems). published: {norm(name): row} of the current data/students.json.
-    stats (optional dict) receives the counts of rows excluded as inactive."""
+    stats (optional dict) receives the counts of inactive / waitlist rows by reason."""
     published = published or {}
     stats = stats if stats is not None else {}
-    stats.update(red=0, notes=0)
+    stats.update(red=0, purple=0, notes_inactive=0, notes_waitlist=0)
     by_key, problems = {}, []
     for table in tables:
         tab, rows = table[0], table[1]
-        red = table[2] if len(table) > 2 and table[2] else [False] * len(rows)
+        colors = table[2] if len(table) > 2 and table[2] else [""] * len(rows)
         if not rows:
             continue
         cols = map_header(rows[0])
@@ -224,13 +288,23 @@ def parse(tables, published=None, stats=None):
             name = proper_case(fix_mixed_script(clean_ws(get(row, "name"))))
             if not name:
                 continue
-            if red[line_no - 1]:
-                stats["red"] += 1
-                continue
-            if any(i < len(row) and row[i] and INACTIVE_RE.search(str(row[i])) for i in notes):
-                stats["notes"] += 1
-                continue
             where = f"[{tab or 'csv'}:{line_no}] {name}"
+            stage = ONBOARDING_STAGE if onboarding else STAGE
+            status = colors[line_no - 1] or ""
+            if status:
+                stats["red" if status == INACTIVE else "purple"] += 1
+            else:
+                for i in notes:
+                    if i < len(row) and row[i]:
+                        status = note_status(str(row[i]))
+                        if status:
+                            stats["notes_" + status] += 1
+                            break
+            if status:
+                # Only the name: the card says «свяжитесь с нами», no schedule/coach/email.
+                rec = [name, "", "", "", "", stage, "", "", status]
+                by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": False})
+                continue
             if onboarding:
                 # «Понедельник, Четверг : 10:30–12:30»: the pair's first day stands for the pair
                 # (onboarding has no main SL day yet); the slot comes from the start time.
@@ -248,9 +322,8 @@ def parse(tables, published=None, stats=None):
                 problems.append(f"{where}: время не распознано")
                 continue
             email = clean_ws(get(row, "email")).lower()
-            rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")),
-                   ONBOARDING_STAGE if onboarding else STAGE,
-                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room"))]
+            rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")), stage,
+                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), ""]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})
 
@@ -258,6 +331,12 @@ def parse(tables, published=None, stats=None):
     for key, cands in by_key.items():
         if len({tuple(c["rec"]) for c in cands}) > 1:
             chosen = pick_duplicate(cands, published.get(key))
+            # A red/purple old row next to the current one is expected; warn only when rows
+            # of the same status disagree, i.e. the sheet is really ambiguous.
+            same = {tuple(c["rec"]) for c in cands if c["rec"][8] == chosen["rec"][8]}
+            if len(same) == 1:
+                students.append(chosen["rec"])
+                continue
             problems.append(f"{chosen['where']}: ученик есть в нескольких строках ("
                             + "; ".join(c["where"].split("]")[0] + "]" for c in cands)
                             + f") — выбрано {chosen['rec'][1]} {chosen['rec'][2]}")
@@ -287,11 +366,14 @@ def main():
     streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
     students, problems = parse(read_tables(Path(args.source).read_bytes(), streams),
                                {norm(r[0]): r for r in current}, stats)
-    onboarding = sum(1 for s in students if s[5] == ONBOARDING_STAGE)
-    print(f"Учеников: {len(students)} (самообучение: {len(students) - onboarding}, онбординг: {onboarding}), "
-          f"с почтой TUMO: {sum(1 for s in students if s[6])}, проблем: {len(problems)}")
-    print(f"Исключено как неактивные: {stats['red'] + stats['notes']} строк — "
-          f"красная заливка: {stats['red']}, отметка в примечаниях: {stats['notes']}")
+    active = [s for s in students if not s[8]]
+    onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
+    print(f"Учеников: {len(students)} — активных: {len(active)} (самообучение: {len(active) - onboarding}, "
+          f"онбординг: {onboarding}), неактивных: {sum(1 for s in students if s[8] == INACTIVE)}, "
+          f"в листе ожидания: {sum(1 for s in students if s[8] == WAITLIST)}; проблем: {len(problems)}")
+    print(f"Строки по статусу — неактивные: красная заливка {stats['red']}, отметка в примечаниях "
+          f"{stats['notes_inactive']}; лист ожидания: фиолетовая заливка {stats['purple']}, отметка в "
+          f"примечаниях {stats['notes_waitlist']}")
     for p in problems:
         print("  " + p)
     if len(students) < args.min_students:

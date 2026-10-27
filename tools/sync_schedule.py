@@ -24,7 +24,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_HTML = REPO_ROOT / "index.html"
 STUDENTS_JSON = REPO_ROOT / "data" / "students.json"
-STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room"]
+# status: "" (active), "inactive" (red row) or "waitlist" (dark purple row); see sheet_to_students.py
+STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status"]
 REPORTS_DIR = REPO_ROOT / "reports"
 
 DAYS_OK = ["Понедельник", "Вторник", "Четверг", "Пятница"]
@@ -487,6 +488,8 @@ def apply_changes(result):
     verify_data = load_student_data()
     assert len(verify_data) == len(data), "record count changed unexpectedly"
     for rec in verify_data:
+        if rec[8]:  # inactive / waitlist rows carry only the name
+            continue
         assert rec[1] in DAYS_OK, f"bad day after apply: {rec}"
         assert rec[2] in TIMES_OK, f"bad time after apply: {rec}"
         assert rec[3].lower() in result["coach_emails"], f"bad coach after apply: {rec}"

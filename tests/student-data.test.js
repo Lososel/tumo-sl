@@ -28,7 +28,7 @@ test('fromJson accepts positional rows and title-cases names', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Шошаев Алдияр', d: 'Понедельник', t: '10:30-12:30', c: 'Gulnaz', ex: 'Nazym',
-    stage: 'Самообучение', email: '', room: ''
+    stage: 'Самообучение', email: '', room: '', status: ''
   });
 });
 
@@ -40,7 +40,7 @@ test('fromCsv maps Google Sheets headers, quotes and email column', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Түлеу Нұрай Азаматқызы', d: 'Четверг', t: '14:30-16:30', c: 'Almas', ex: 'Gulim, Elmira',
-    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: ''
+    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: '', status: ''
   });
 });
 
@@ -163,4 +163,13 @@ test('coachName shows coach names in Cyrillic like tumo-onb-app', () => {
   assert.strictEqual(S.coachName('Gulim (+Dana Kurak)', 'kk'), 'Гүлім (+Дана Курак)');
   assert.strictEqual(S.coachName('Назым', 'ru'), 'Назым');
   assert.strictEqual(S.coachName('', 'ru'), '');
+});
+
+test('status (inactive / waitlist) is read from the 9th column', () => {
+  const recs = S.fromJson({ students: [
+    ['Шаймерденова Айша Азаматовна', '', '', '', '', 'Самообучение', '', '', 'inactive'],
+    ['Дорт Эсманур', '', '', '', '', 'Самообучение', '', '', 'waitlist'],
+    ['Аскерұлы Есбер', 'Понедельник', '10:30-12:30', 'Gulnaz', 'Gulnaz', 'Самообучение', 'a@tumo.world']] });
+  assert.deepStrictEqual(recs.map(r => r.status), ['inactive', 'waitlist', '']);
+  assert.strictEqual(S.searchStudents(recs, 'шаймерденова айша').results[0].status, 'inactive');
 });
