@@ -28,7 +28,7 @@ test('fromJson accepts positional rows and title-cases names', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Шошаев Алдияр', d: 'Понедельник', t: '10:30-12:30', c: 'Gulnaz', ex: 'Nazym',
-    stage: 'Самообучение', email: ''
+    stage: 'Самообучение', email: '', room: ''
   });
 });
 
@@ -40,7 +40,7 @@ test('fromCsv maps Google Sheets headers, quotes and email column', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Түлеу Нұрай Азаматқызы', d: 'Четверг', t: '14:30-16:30', c: 'Almas', ex: 'Gulim, Elmira',
-    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz'
+    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: ''
   });
 });
 
@@ -143,4 +143,24 @@ test('updated timestamp is read from students.json and formatted like the onboar
   assert.strictEqual(S.formatUpdated(null), '');
   assert.strictEqual(S.formatUpdated('garbage'), '');
   assert.strictEqual(S.parseSource('[["Иван Петров","Вторник","10:30-12:30","",""]]').updated, null);
+});
+
+test('room (Кабинет) is read from rows and from the «Зона обучения» CSV column', () => {
+  const [rec] = S.fromJson({ students: [['Кумарбеков Диар', 'Понедельник', '10:30-12:30', 'Ayaulym', '', 'Онбординг', 'diar.k@tumo.world', '3 этаж, 7 WR']] });
+  assert.strictEqual(rec.room, '3 этаж, 7 WR');
+  assert.strictEqual(rec.stage, 'Онбординг');
+  const [csvRec] = S.fromCsv('ФИО,День SL,Время,Зона обучения\nКумарбеков Диар,Понедельник,10:30,3 этаж 7 WR\n');
+  assert.strictEqual(csvRec.room, '3 этаж 7 WR');
+});
+
+test('coachName shows coach names in Cyrillic like tumo-onb-app', () => {
+  assert.strictEqual(S.coachName('Dana Akhmetova', 'ru'), 'Дана Ахметова');
+  assert.strictEqual(S.coachName('Alinur', 'kk'), 'Әлінұр');
+  assert.strictEqual(S.coachName('Alinur', 'ru'), 'Алинур');
+  assert.strictEqual(S.coachName('Ayaulym', 'ru'), 'Аяулым');
+  assert.strictEqual(S.coachName('Aruzhan Torebek', 'ru'), 'Аружан Торебек');
+  assert.strictEqual(S.coachName('Tahmina', 'ru'), 'Тахмина');
+  assert.strictEqual(S.coachName('Gulim (+Dana Kurak)', 'kk'), 'Гүлім (+Дана Курак)');
+  assert.strictEqual(S.coachName('Назым', 'ru'), 'Назым');
+  assert.strictEqual(S.coachName('', 'ru'), '');
 });

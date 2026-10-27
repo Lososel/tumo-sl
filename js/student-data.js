@@ -26,6 +26,55 @@
     return s.replace(/(^|[\s\-‐'’ʼ(+])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase());
   }
 
+  // ---------- coach names (ported 1:1 from tumo-onb-app frontend/src/coaches.ts) ----------
+  // The sheet has Latin names ("Nazym", "Dana Akhmetova"); the onboarding card shows them in
+  // Cyrillic: Russian spelling on the RU page, Kazakh on the KZ page. Unknown words are
+  // transliterated by rule; Cyrillic names are left as they are.
+  const COACH_KNOWN = {
+    akbota: { ru: 'Акбота', kk: 'Ақбота' }, akhmet: { ru: 'Ахмет', kk: 'Ахмет' },
+    akhmetova: { ru: 'Ахметова', kk: 'Ахметова' }, aigerim: { ru: 'Айгерим', kk: 'Әйгерім' },
+    aizhan: { ru: 'Айжан', kk: 'Айжан' }, alinur: { ru: 'Алинур', kk: 'Әлінұр' },
+    aliya: { ru: 'Алия', kk: 'Әлия' }, almas: { ru: 'Алмас', kk: 'Алмас' },
+    arman: { ru: 'Арман', kk: 'Арман' }, aruzhan: { ru: 'Аружан', kk: 'Аружан' },
+    asel: { ru: 'Асель', kk: 'Әсел' }, dana: { ru: 'Дана', kk: 'Дана' },
+    dinara: { ru: 'Динара', kk: 'Динара' }, elmira: { ru: 'Эльмира', kk: 'Эльмира' },
+    gulim: { ru: 'Гулим', kk: 'Гүлім' }, madina: { ru: 'Мадина', kk: 'Мадина' },
+    moldir: { ru: 'Мольдир', kk: 'Мөлдір' }, nazym: { ru: 'Назым', kk: 'Назым' },
+    samat: { ru: 'Самат', kk: 'Самат' }, telzhan: { ru: 'Тельжан', kk: 'Телжан' }
+  };
+  const TR_DIGRAPHS = [['shch', 'щ'], ['zh', 'ж'], ['kh', 'х'], ['sh', 'ш'], ['ch', 'ч'], ['ts', 'ц'],
+                       ['ya', 'я'], ['yu', 'ю'], ['yo', 'ё'], ['ye', 'е']];
+  const TR_LETTERS = { a: 'а', b: 'б', c: 'к', d: 'д', e: 'е', f: 'ф', g: 'г', h: 'х', i: 'и', j: 'дж', k: 'к',
+                       l: 'л', m: 'м', n: 'н', o: 'о', p: 'п', q: 'к', r: 'р', s: 'с', t: 'т', u: 'у', v: 'в',
+                       w: 'у', x: 'кс', z: 'з' };
+
+  function transliterate(word) {
+    const w = word.toLowerCase();
+    let out = '';
+    for (let i = 0; i < w.length;) {
+      const di = TR_DIGRAPHS.find(([lat]) => w.startsWith(lat, i));
+      if (di) { out += di[1]; i += di[0].length; continue; }
+      const ch = w[i];
+      const prevOut = out.slice(-1);
+      if (ch === 'e' && i === 0) out += 'э'; // Elnur -> Элнур: initial E
+      // "i" after a vowel and before a consonant/end is a glide: Aibek -> Айбек
+      else if (ch === 'i' && 'аеоуэ'.includes(prevOut) && !'aeou'.includes(w[i + 1] || '-')) out += 'й';
+      // "y" is ы after a consonant or й, a glide (й) after a vowel: Nurym -> Нурым
+      else if (ch === 'y') out += 'аеоуэ'.includes(prevOut) && prevOut !== '' ? 'й' : 'ы';
+      else out += TR_LETTERS[ch] || ch;
+      i += 1;
+    }
+    return out.charAt(0).toUpperCase() + out.slice(1);
+  }
+
+  // coachName('Dana Akhmetova', 'ru') -> 'Дана Ахметова'; lang: 'ru' | 'kk'
+  function coachName(name, lang) {
+    if (!name) return name;
+    const loc = lang === 'ru' ? 'ru' : 'kk';
+    return properCase(String(name).replace(/[A-Za-z]+/g,
+      word => (COACH_KNOWN[word.toLowerCase()] || {})[loc] || transliterate(word)));
+  }
+
   // ---------- search ----------
   // Kazakh letters fold to their closest Russian letter (as in the onboarding app), plus ё/й/э,
   // so either keyboard layout finds the name: "нуртас" finds "Нұртас", "Әлихан" finds "Алихан".
@@ -124,13 +173,14 @@
       c: properCase(o.coach),
       ex: properCase(o.exCoach),
       stage: cleanText(o.stage) || DEFAULT_STAGE,
-      email: cleanText(o.email).toLowerCase()
+      email: cleanText(o.email).toLowerCase(),
+      room: cleanText(o.room)
     };
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room]
   function fromRow(r) {
-    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6] });
+    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7] });
   }
 
   const HEADER_ALIASES = {
@@ -140,7 +190,8 @@
     coach: ['новый коуч sl', 'коуч sl', 'коуч', 'coach', 'new coach'],
     exCoach: ['ex-coach', 'ex coach', 'прежний коуч', 'старый коуч'],
     stage: ['этап', 'этап обучения', 'stage'],
-    email: ['почта tumo ученика', 'почта ученика', 'почта tumo', 'почта', 'email', 'e-mail', 'student email']
+    email: ['почта tumo ученика', 'почта ученика', 'почта tumo', 'почта', 'email', 'e-mail', 'student email'],
+    room: ['зона обучения', 'кабинет', 'room']
   };
 
   function headerMap(headers) {
@@ -183,7 +234,7 @@
     if (map.name === undefined) throw new Error('CSV: колонка с ФИО не найдена');
     return rows.slice(1).map(r => makeRecord({
       name: r[map.name], day: r[map.day], time: r[map.time], coach: r[map.coach],
-      exCoach: r[map.exCoach], stage: r[map.stage], email: r[map.email]
+      exCoach: r[map.exCoach], stage: r[map.stage], email: r[map.email], room: r[map.room]
     })).filter(Boolean);
   }
 
@@ -238,7 +289,7 @@
     throw lastError;
   }
 
-  return { properCase, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
+  return { properCase, coachName, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });

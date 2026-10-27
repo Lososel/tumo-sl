@@ -8,12 +8,19 @@ name, SL day, time slot, coach, ex-coach, stage and the student's @tumo.world em
 
 Input: the workbook as .xlsx (all schedule tabs) or a CSV export of a single tab.
   - xlsx: every tab named like "ПН ЧТ 1030" / "ВТ ПТ 1630" is read; the tab name gives the time slot.
+    Onboarding stream tabs ("4 поток", see --streams) are read too: name from «ФИО ребенка»,
+    days and slot from «Расписание», coach from «Коуч», room from «Зона обучения», stage «Онбординг».
   - csv:  the time slot is taken from "Новое расписание" or "Расписание".
 
 Inactive students are left out:
   - rows highlighted red (fill of the «ФИО ученика» cell; .xlsx only, a CSV has no colours);
   - rows whose notes/status columns («Причина ухода», «Ушел к коучу», unlabelled note
-    columns...) say "ignore", "self initiated", "лист ожидания" or "отчислен".
+    columns...) say the student left or is not attending now: "отказ", "отчислен", "ignore",
+    "self initiated", "не может/не сможет посещать", "приостановлено", "suspend", or a
+    waitlist for a later period ("ЛИСТ ОЖИДАНИЯ 2027", "лист ожидания лето/январь/ноябрь",
+    "на след./новый поток", "после НГ").
+    Kept: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
+    student attends now and only wants another slot.
   The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
   first asked for, not the student's current status.
 
@@ -37,6 +44,9 @@ from sync_schedule import (  # noqa: E402
 )
 
 STAGE = "Самообучение"
+ONBOARDING_STAGE = "Онбординг"
+STREAM_TAB_RE = re.compile(r"^(\d+)\s*поток$", re.I)
+DEFAULT_STREAMS = ("4", "5")  # onboarding stream tabs to include, by number
 SLOT_BY_HOUR = {"10": "10:30-12:30", "14": "14:30-16:30", "16": "16:30-18:30"}
 TAB_RE = re.compile(r"^(ПН\s*ЧТ|ВТ\s*ПТ)\s*(\d{2})\d{2}$", re.I)
 DAYS_BY_PAIR = {"пнчт": {"Понедельник", "Четверг"}, "втпт": {"Вторник", "Пятница"}}
@@ -44,7 +54,13 @@ TUMO_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@tumo\.world$")
 
 # Notes/status columns checked for INACTIVE_RE (prefix match), plus columns with an empty header.
 NOTE_HEADERS = ("причина ухода", "ушел к коучу", "ушёл к коучу", "статус", "примечан", "коммент", "status", "notes")
-INACTIVE_RE = re.compile(r"ignore|self[\s-]*initiated|лист\s*ожидани|отчисл", re.I)
+_LATER = r"(?:20[2-3]\d|лет|зим|весн|осен|январ|феврал|март|ноябр|декабр|след|нов\w*\s+поток)"
+INACTIVE_RE = re.compile(
+    r"ignore|self[\s-]*initiated|отчисл|отказ|не\s+(?:может|сможет|будет)\s+посещать|приостанов|suspend"
+    r"|(?:лист\w*\s+ожидани\w*|waitlist|\bwl\b).*?" + _LATER +
+    r"|(?:след\w*|нов\w*)\s+поток|после\s+нг",
+    re.I,
+)
 
 
 def is_red(color):
@@ -76,10 +92,15 @@ def red_fill(cell):
 # Column header (lowercased, prefix match) -> field. Anything else in the sheet is ignored.
 HEADERS = {
     "фио ученика": "name",
+    "фио ребенка": "name",
+    "фио ребёнка": "name",
     "день sl": "day",
     "новый коуч sl": "coach",
+    "коуч": "coach",
     "ex-coach": "ex",
     "почта tumo": "email",
+    "почта тумо": "email",
+    "зона обучения": "room",
     "новое расписание": "new_schedule",
     "расписание": "schedule",
 }
@@ -117,7 +138,12 @@ def map_header(row):
     return cols
 
 
-def read_tables(raw):
+def stream_of(tab):
+    m = STREAM_TAB_RE.match(tab or "")
+    return m.group(1) if m else None
+
+
+def read_tables(raw, streams=DEFAULT_STREAMS):
     """bytes -> [(tab_name or None, rows, red)] where red[i] says row i is highlighted red
     (its «ФИО ученика» cell, or the first cell if the tab has no such column). CSV: red is None."""
     if raw[:2] == b"PK":
@@ -126,7 +152,8 @@ def read_tables(raw):
         wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
         tables = []
         for ws in wb.worksheets:
-            if not TAB_RE.match(ws.title.strip()):
+            title = ws.title.strip()
+            if not (TAB_RE.match(title) or stream_of(title) in set(streams)):
                 continue
             rows, red, name_col = [], [], 0
             for i, cells in enumerate(ws.iter_rows()):
@@ -180,8 +207,9 @@ def parse(tables, published=None, stats=None):
         if not rows:
             continue
         cols = map_header(rows[0])
-        if "name" not in cols or "day" not in cols:
-            problems.append(f"[{tab}] нет колонок «ФИО ученика» / «День SL» — вкладка пропущена")
+        onboarding = stream_of(tab) is not None
+        if "name" not in cols or ("schedule" if onboarding else "day") not in cols:
+            problems.append(f"[{tab}] нет колонок «ФИО» / «{'Расписание' if onboarding else 'День SL'}» — вкладка пропущена")
             continue
         notes = note_columns(rows[0], cols["name"])
         m = TAB_RE.match(tab or "")
@@ -203,7 +231,15 @@ def parse(tables, published=None, stats=None):
                 stats["notes"] += 1
                 continue
             where = f"[{tab or 'csv'}:{line_no}] {name}"
-            day = clean_ws(get(row, "day")).capitalize()
+            if onboarding:
+                # «Понедельник, Четверг : 10:30–12:30»: the pair's first day stands for the pair
+                # (onboarding has no main SL day yet); the slot comes from the start time.
+                sched = clean_ws(get(row, "schedule")).lower()
+                day = "Понедельник" if "понедельник" in sched or "четверг" in sched else (
+                      "Вторник" if "вторник" in sched or "пятница" in sched else sched.capitalize())
+                pair_days = set(DAYS_OK)
+            else:
+                day = clean_ws(get(row, "day")).capitalize()
             time = tab_slot or slot_from_text(get(row, "new_schedule")) or slot_from_text(get(row, "schedule"))
             if day not in DAYS_OK or day not in pair_days:
                 problems.append(f"{where}: день SL не распознан: {day!r}")
@@ -212,8 +248,9 @@ def parse(tables, published=None, stats=None):
                 problems.append(f"{where}: время не распознано")
                 continue
             email = clean_ws(get(row, "email")).lower()
-            rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")), STAGE,
-                   email if TUMO_EMAIL_RE.match(email) else ""]
+            rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")),
+                   ONBOARDING_STAGE if onboarding else STAGE,
+                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room"))]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})
 
@@ -239,14 +276,20 @@ def main():
     ap.add_argument("--max-drop", type=float, default=0.2,
                     help="Refuse to write if the student count falls by more than this share "
                          "(e.g. a single-tab CSV instead of the whole workbook)")
+    ap.add_argument("--streams", default=",".join(DEFAULT_STREAMS),
+                    help='Onboarding stream tabs to include, e.g. "4" or "4,5" (default: %(default)s)')
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     out = Path(args.out)
     current = load_student_data(out) if out.exists() else []
     stats = {}
-    students, problems = parse(read_tables(Path(args.source).read_bytes()), {norm(r[0]): r for r in current}, stats)
-    print(f"Учеников: {len(students)}, с почтой TUMO: {sum(1 for s in students if s[6])}, проблем: {len(problems)}")
+    streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
+    students, problems = parse(read_tables(Path(args.source).read_bytes(), streams),
+                               {norm(r[0]): r for r in current}, stats)
+    onboarding = sum(1 for s in students if s[5] == ONBOARDING_STAGE)
+    print(f"Учеников: {len(students)} (самообучение: {len(students) - onboarding}, онбординг: {onboarding}), "
+          f"с почтой TUMO: {sum(1 for s in students if s[6])}, проблем: {len(problems)}")
     print(f"Исключено как неактивные: {stats['red'] + stats['notes']} строк — "
           f"красная заливка: {stats['red']}, отметка в примечаниях: {stats['notes']}")
     for p in problems:
