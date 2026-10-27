@@ -528,6 +528,19 @@
     'elmira':'shainurova.elmira@tumo.center',
     'dariga':'dariga.khassen@tumo.center'
   };
+  // Coach names on onboarding cards, spelled as tumo-onb-app's coach directory shows them
+  // (CoachDirectory.resolve over backend/data/coaches.json). Others: StudentData.coachName().
+  const COACH_DISPLAY = {
+    'ayaulym':'Аяулым', 'alen':'Ален', 'tahmina':'Тахмина', 'danel':'Данель',
+    'aruzhan torebek':'Аружан Төребек', 'dana kurak':'Дана Құрақ', 'dana telzhan':'Дана Телжан',
+    'dana akhmetova':'Дана Ахметова', 'dariga':'Дариға', 'nazym':'Назым', 'gulnaz':'Гулназ',
+    'almas':'Алмас', 'elmira':'Эльмира', 'nurai':'Нурай', 'alinur':'Әлинұр'
+  };
+  function onboardingCoachName(rawCoach){
+    if(!rawCoach) return '';
+    const primary = rawCoach.split('(')[0].trim().toLowerCase();
+    return COACH_DISPLAY[primary] || StudentData.coachName(rawCoach, currentLang === 'kz' ? 'kk' : 'ru');
+  }
   function coachEmail(rawCoach){
     if(!rawCoach) return '';
     const primary = rawCoach.split('(')[0].trim().toLowerCase();
@@ -772,7 +785,7 @@
       <div class="facts">
         ${field(o.schedule, escapeHtml(schedule))}
         ${field(o.room, escapeHtml(r.room))}
-        ${field(o.coach, escapeHtml(StudentData.coachName(r.c, currentLang === 'kz' ? 'kk' : 'ru')))}
+        ${field(o.coach, escapeHtml(onboardingCoachName(r.c)))}
         ${field(o.coachEmail, mail(email))}
         ${field(o.email, mail(r.email))}
       </div>

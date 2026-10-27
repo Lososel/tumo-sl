@@ -18,6 +18,13 @@ services:
       - key: TEMP_PASSWORD
         sync: false
     headers:
+      # The page itself must not be cached either, or visitors keep running old card code.
+      - path: /
+        name: Cache-Control
+        value: no-cache
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
       - path: /data/*
         name: Cache-Control
         value: no-cache
