@@ -9,7 +9,7 @@ services:
     # Publish only the public files (not tools/, tests/ or reports).
     # js/config.js gets TEMP_PASSWORD (Render dashboard → Environment) so it never lands in git.
     buildCommand: >-
-      rm -rf public && mkdir public && cp -r index.html js data public/ &&
+      rm -rf public && mkdir public && cp -r index.html favicon.svg favicon-32.png apple-touch-icon.png js data public/ &&
       node -e "require('fs').writeFileSync('public/js/config.js', 'window.SITE_CONFIG = ' + JSON.stringify({ tempPassword: process.env.TEMP_PASSWORD || '' }) + ';\n')"
     staticPublishPath: ./public
     envVars:
