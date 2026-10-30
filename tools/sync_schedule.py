@@ -25,7 +25,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_HTML = REPO_ROOT / "index.html"
 STUDENTS_JSON = REPO_ROOT / "data" / "students.json"
 # status: "" (active), "inactive" (red row) or "waitlist" (dark purple row); see sheet_to_students.py
-STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status"]
+# workshops: list of [title, room, coach, time, start, end, changed] (see sheet_to_students.py)
+STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status", "workshops"]
 REPORTS_DIR = REPO_ROOT / "reports"
 
 DAYS_OK = ["Понедельник", "Вторник", "Четверг", "Пятница"]
@@ -199,7 +200,12 @@ def load_student_data(path=None):
     """Return the student rows [name, day, time, coach, exCoach, stage, email]."""
     payload = json.loads(Path(path or STUDENTS_JSON).read_text(encoding="utf-8"))
     rows = payload["students"] if isinstance(payload, dict) else payload
-    return [list(r) + [""] * (len(STUDENT_FIELDS) - len(r)) for r in rows]
+    out = []
+    for r in rows:
+        r = list(r) + [""] * (len(STUDENT_FIELDS) - len(r))
+        r[9] = r[9] if isinstance(r[9], list) else []  # workshops
+        out.append(r)
+    return out
 
 
 def save_student_data(data, path=None):
@@ -208,6 +214,7 @@ def save_student_data(data, path=None):
     for r in data:
         r = list(r) + [""] * (len(STUDENT_FIELDS) - len(r))
         r[0], r[3], r[4] = proper_case(r[0]), proper_case(r[3]), proper_case(r[4])
+        r[9] = r[9] if isinstance(r[9], list) else []
         rows.append(r)
     body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
     text = (

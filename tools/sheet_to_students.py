@@ -26,6 +26,14 @@ Status of a student (row colour = fill of the «ФИО» cell; .xlsx only, a CSV
     Active: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
     student attends now and only wants another slot.
   Inactive/waitlist rows keep only the name (no schedule, coach or email).
+
+Workshops (optional): a separate workshop sheet (--workshops, e.g. «Workshops 26.10») and/or
+  a «Воркшопы…» tab in the master sheet. Columns (header row, any order):
+    ФИО ученика | Почта TUMO (optional) | Воркшоп | Кабинет / Зона | Коуч | Дни и время |
+    Дата начала | Дата окончания | Дата изменения
+  One row per student per workshop (current and next). Matched to students by full name
+  (TUMO email wins when given). The card shows «Текущий / Следующий воркшоп» and alerts for a
+  new workshop starting soon or a recent change. No rows = no workshop on the cards.
   The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
   first asked for, not the student's current status.
 
@@ -197,6 +205,121 @@ def map_header(row):
     return cols
 
 
+WORKSHOP_TAB_RE = re.compile(r"^\s*(воркшоп|workshop)", re.I)
+# Header (lowercased) -> field; the longest matching prefix wins («дата начала» before «дата»).
+WORKSHOP_HEADERS = {
+    "фио": "name", "ученик": "name", "name": "name", "student": "name",
+    "почта tumo": "email", "почта тумо": "email", "email": "email",
+    "воркшоп": "workshop", "название": "workshop", "workshop": "workshop", "направление": "workshop", "тема": "workshop",
+    "кабинет": "room", "зона": "room", "аудитория": "room", "room": "room",
+    "коуч": "coach", "ведущий": "coach", "лидер": "coach", "тренер": "coach", "coach": "coach", "leader": "coach",
+    "workshop leader": "coach", "workshop coach": "coach",
+    "дни и время": "time", "расписание": "time", "время": "time", "дни": "time", "schedule": "time", "time": "time",
+    "дата начала": "start", "начало": "start", "с даты": "start", "start": "start",
+    "дата окончания": "end", "окончание": "end", "конец": "end", "по дату": "end", "end": "end",
+    "дата изменения": "changed", "изменено": "changed", "изменен": "changed", "changed": "changed", "updated": "changed",
+}
+WORKSHOP_FIELDS = ["title", "room", "coach", "time", "start", "end", "changed"]  # one workshop in students.json
+
+
+def _iso_date(value):
+    """Cell value -> "YYYY-MM-DD" ("" if not a date). Accepts dates and dd.mm.yyyy / dd.mm text."""
+    import datetime
+
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value.strftime("%Y-%m-%d")
+    m = re.search(r"(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?", str(value or ""))
+    if not m:
+        return ""
+    year = int(m.group(3)) if m.group(3) else datetime.date.today().year
+    year += 2000 if year < 100 else 0
+    try:
+        return datetime.date(year, int(m.group(2)), int(m.group(1))).isoformat()
+    except ValueError:
+        return ""
+
+
+def _workshop_columns(header):
+    cols = {}
+    for i, cell in enumerate(header):
+        h = clean_ws(cell).lower()
+        hits = [p for p in WORKSHOP_HEADERS if h.startswith(p)]
+        if hits:
+            field = WORKSHOP_HEADERS[max(hits, key=len)]
+            cols.setdefault(field, i)
+    return cols
+
+
+def read_workshop_rows(raw, tab_re=None):
+    """xlsx bytes -> [{name, email, title, room, coach, time, start, end, changed}].
+
+    Reads every tab whose header has a «Воркшоп» column and a «ФИО ученика» (or «Почта TUMO»)
+    column; tab_re limits the tabs (the master sheet: only «Воркшопы…» tabs). Other columns
+    (phones, notes...) are ignored. [] for CSV input or when nothing matches."""
+    if raw[:2] != b"PK":
+        return []
+    import openpyxl
+
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
+    out = []
+    for ws in wb.worksheets:
+        if tab_re is not None and not tab_re.match(ws.title):
+            continue
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        cols = _workshop_columns(rows[0])
+        if "workshop" not in cols or not ({"name", "email"} & set(cols)):
+            continue
+        for line_no, r in enumerate(rows[1:], start=2):
+            get = lambda f: r[cols[f]] if f in cols and cols[f] < len(r) else None  # noqa: E731
+            title = clean_ws(get("workshop"))
+            if not title:
+                continue
+            out.append({
+                "where": f"[{ws.title}:{line_no}]",
+                "name": proper_case(fix_mixed_script(clean_ws(get("name")))),
+                "email": clean_ws(get("email")).lower(),
+                "title": title, "room": clean_ws(get("room")),
+                "coach": canon_coach(get("coach")), "time": clean_ws(get("time")),
+                "start": _iso_date(get("start")), "end": _iso_date(get("end")), "changed": _iso_date(get("changed")),
+            })
+    return out
+
+
+def attach_workshops(students, workshop_rows):
+    """Add each workshop row to its student's workshop list (field 9), sorted by start date.
+
+    The full name is the key (Kazakh/Russian letters, case and word order don't matter); a
+    TUMO email, when given, wins; a name without the patronymic matches if only one student
+    fits. Inactive / waitlist students get nothing. Returns the rows that matched no student."""
+    active = [s for s in students if not s[8]]
+    by_email = {s[6]: s for s in active if s[6]}
+    by_name = {}
+    for s in active:
+        by_name.setdefault(norm(s[0]), []).append(s)
+    tokens = [(frozenset(norm(s[0]).split()), s) for s in active]
+    unmatched = []
+    for w in workshop_rows:
+        s = by_email.get(w["email"]) if w["email"] else None
+        if s is None:
+            same = by_name.get(norm(w["name"]), [])
+            if len(same) == 1:
+                s = same[0]
+            elif not same:
+                want = frozenset(norm(w["name"]).split())
+                fits = [st for tk, st in tokens if len(want) >= 2 and want <= tk]
+                s = fits[0] if len(fits) == 1 else None
+        if s is None:
+            unmatched.append(w)
+            continue
+        entry = [w[f] for f in WORKSHOP_FIELDS]
+        if entry not in s[9]:
+            s[9].append(entry)
+            s[9].sort(key=lambda e: (e[4] or "9999", e[0]))
+    return unmatched
+
+
 def stream_of(tab):
     m = STREAM_TAB_RE.match(tab or "")
     return m.group(1) if m else None
@@ -302,7 +425,7 @@ def parse(tables, published=None, stats=None):
                             break
             if status:
                 # Only the name: the card says «свяжитесь с нами», no schedule/coach/email.
-                rec = [name, "", "", "", "", stage, "", "", status]
+                rec = [name, "", "", "", "", stage, "", "", status, []]
                 by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": False})
                 continue
             if onboarding:
@@ -323,17 +446,17 @@ def parse(tables, published=None, stats=None):
                 continue
             email = clean_ws(get(row, "email")).lower()
             rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")), stage,
-                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), ""]
+                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})
 
     students = []
     for key, cands in by_key.items():
-        if len({tuple(c["rec"]) for c in cands}) > 1:
+        if len({tuple(c["rec"][:9]) for c in cands}) > 1:
             chosen = pick_duplicate(cands, published.get(key))
             # A red/purple old row next to the current one is expected; warn only when rows
             # of the same status disagree, i.e. the sheet is really ambiguous.
-            same = {tuple(c["rec"]) for c in cands if c["rec"][8] == chosen["rec"][8]}
+            same = {tuple(c["rec"][:9]) for c in cands if c["rec"][8] == chosen["rec"][8]}
             if len(same) == 1:
                 students.append(chosen["rec"])
                 continue
@@ -357,6 +480,8 @@ def main():
                          "(e.g. a single-tab CSV instead of the whole workbook)")
     ap.add_argument("--streams", default=",".join(DEFAULT_STREAMS),
                     help='Onboarding stream tabs to include, e.g. "4" or "4,5" (default: %(default)s)')
+    ap.add_argument("--workshops", action="append", default=[], metavar="FILE",
+                    help="Downloaded workshop sheet (.xlsx); may be given several times")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -364,8 +489,17 @@ def main():
     current = load_student_data(out) if out.exists() else []
     stats = {}
     streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
-    students, problems = parse(read_tables(Path(args.source).read_bytes(), streams),
-                               {norm(r[0]): r for r in current}, stats)
+    raw = Path(args.source).read_bytes()
+    students, problems = parse(read_tables(raw, streams), {norm(r[0]): r for r in current}, stats)
+    workshop_rows = read_workshop_rows(raw, WORKSHOP_TAB_RE)
+    for extra in args.workshops:
+        if Path(extra).exists():
+            workshop_rows += read_workshop_rows(Path(extra).read_bytes())
+    unmatched = attach_workshops(students, workshop_rows)
+    if workshop_rows:
+        print(f"Воркшопы: {len(workshop_rows)} строк, найдено учеников: {len(workshop_rows) - len(unmatched)}")
+        for w in unmatched:
+            problems.append(f"{w['where']} воркшоп «{w['title']}»: ученик не найден: {w['email'] or w['name']}")
     active = [s for s in students if not s[8]]
     onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
     print(f"Учеников: {len(students)} — активных: {len(active)} (самообучение: {len(active) - onboarding}, "
