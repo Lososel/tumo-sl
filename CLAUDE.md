@@ -28,9 +28,15 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).
-- Workshops come only from an optional «Воркшопы» tab (columns: ФИО ученика / Почта TUMO,
-  Воркшоп, Кабинет, Дни и время, Дата изменения), matched by TUMO email then name. No tab = no
-  workshop block. Never invent workshop data; the source of truth is the TUMO platform.
+- Workshops come from the workshop sheet «Workshops 26.10» (Drive file
+  `1E1L3mJdGASq0hkV83i5knWpXgmWNF8eO1e7HBiAcIYE`, workflow var `WORKSHOP_SHEET_FILE_ID`) and/or a
+  «Воркшопы» tab in the master sheet. Header row: ФИО ученика | Почта TUMO (optional) | Воркшоп |
+  Кабинет / Зона | Коуч | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
+  student per workshop. Matched by full name (email wins; a name without patronymic only if
+  unique). Stored as field 9 `workshops` = [[title, room, coach, time, start, end, changed]].
+  Never invent workshop data; the source of truth is the TUMO platform.
+- Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
+  alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).

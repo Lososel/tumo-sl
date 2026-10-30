@@ -159,20 +159,29 @@
     const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     const id = studentId(rec.n);
     const events = [];
-    const add = (uid, title, sched, location) => {
-      const day = firstDate(sched.days, now);
+    const add = (uid, title, sched, location, range) => {
+      const day = firstDate(sched.days, (range && range.from) || now);
       const t = s => s.replace(':', '') + '00';
+      // until the workshop's last day, 23:59 Almaty = 18:59 UTC
+      const until = range && range.until ? `;UNTIL=${ymd(range.until)}T185959Z` : '';
       events.push(['BEGIN:VEVENT', `UID:${uid}-${id}@tumo-astana-sl`, `DTSTAMP:${stamp}`,
         `DTSTART;TZID=Asia/Almaty:${ymd(day)}T${t(sched.start)}`, `DTEND;TZID=Asia/Almaty:${ymd(day)}T${t(sched.end)}`,
-        `RRULE:FREQ=WEEKLY;BYDAY=${sched.days.join(',')}`, `SUMMARY:${icsText(title)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${sched.days.join(',')}${until}`, `SUMMARY:${icsText(title)}`,
         `LOCATION:${icsText(location)}`, `DESCRIPTION:${icsText(rec.n)}`,
         'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(title)}`, 'TRIGGER:-PT1H', 'END:VALARM',
         'END:VEVENT']);
     };
     const cls = classSchedule(rec);
     if (cls) add('class', opts.classTitle, cls, [rec.room, opts.location].filter(Boolean).join(', '));
-    const ws = rec.ws && parseScheduleText(rec.wsTime);
-    if (ws) add('workshop', `${opts.workshopTitle}: ${rec.ws}`, ws, [rec.wsRoom, opts.location].filter(Boolean).join(', '));
+    const tl = workshopTimeline(rec, now);
+    [tl.current, tl.next].filter(Boolean).forEach((w, i) => {
+      const sched = parseScheduleText(w.time);
+      if (!sched) return;
+      const from = isoDay(w.start);
+      add('workshop' + i, `${opts.workshopTitle}: ${w.title}`, sched,
+          [w.room, opts.location].filter(Boolean).join(', '),
+          { from: from && from > now ? from : now, until: isoDay(w.end) });
+    });
     if (!events.length) return '';
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TUMO Astana//Schedule//RU', 'CALSCALE:GREGORIAN',
       'BEGIN:VTIMEZONE', 'TZID:Asia/Almaty', 'BEGIN:STANDARD', 'DTSTART:19700101T000000',
@@ -196,12 +205,38 @@
     return 'https://calendar.google.com/calendar/render?' + q.toString();
   }
 
-  // Workshop changed within the last `days` days (default 14)?
-  function workshopRecentlyChanged(rec, now, days) {
-    if (!rec.ws || !/^\d{4}-\d{2}-\d{2}$/.test(rec.wsChanged || '')) return false;
-    const [y, m, d] = rec.wsChanged.split('-').map(Number);
-    const age = ((now || new Date()) - new Date(y, m - 1, d)) / 86400000;
-    return age >= 0 && age <= (days || 14);
+  const isoDay = iso => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  // Current and next workshop of a student and the alerts to show:
+  //   current: running today (start <= today <= end; missing dates count as open-ended)
+  //   next:    the earliest one that hasn't started yet
+  //   nextSoon: next starts within `soonDays` days (default 14) -> «скоро новый воркшоп»
+  //   changed:  current or next was changed within `soonDays` days -> «воркшоп изменён»
+  function workshopTimeline(rec, now, soonDays) {
+    const days = soonDays || 14;
+    const today = new Date((now || new Date()).getFullYear(), (now || new Date()).getMonth(), (now || new Date()).getDate());
+    const list = (rec.workshops || []).filter(w => {
+      const end = isoDay(w.end);
+      return !end || end >= today;                     // finished workshops are dropped
+    });
+    const started = w => { const s = isoDay(w.start); return !s || s <= today; };
+    const current = list.filter(started).pop() || null; // the latest one already running
+    const next = list.find(w => !started(w)) || null;
+    const within = (iso, sign) => {
+      const d = isoDay(iso);
+      if (!d) return false;
+      const diff = (d - today) / 86400000 * sign;
+      return diff >= 0 && diff <= days;
+    };
+    return {
+      current, next,
+      nextSoon: !!(next && within(next.start, 1)),
+      changed: [current, next].some(w => w && within(w.changed, -1))
+    };
   }
 
   // ---------- search ----------
@@ -305,17 +340,21 @@
       email: cleanText(o.email).toLowerCase(),
       room: cleanText(o.room),
       status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
-      // Workshop (from a «Воркшопы» tab of the master sheet, when there is one)
-      ws: cleanText(o.workshop), wsRoom: cleanText(o.workshopRoom), wsTime: cleanText(o.workshopTime),
-      wsChanged: cleanText(o.workshopChanged) // ISO date of the last change, '' if unknown
+      // Workshops from the workshop sheet: [{title, room, coach, time, start, end, changed}],
+      // dates ISO 'YYYY-MM-DD' or ''. Sorted by start date.
+      workshops: (Array.isArray(o.workshops) ? o.workshops : []).map(w => Array.isArray(w)
+        ? { title: cleanText(w[0]), room: cleanText(w[1]), coach: cleanText(w[2]), time: cleanText(w[3]),
+            start: cleanText(w[4]), end: cleanText(w[5]), changed: cleanText(w[6]) }
+        : { title: cleanText(w.title), room: cleanText(w.room), coach: cleanText(w.coach), time: cleanText(w.time),
+            start: cleanText(w.start), end: cleanText(w.end), changed: cleanText(w.changed) })
+        .filter(w => w.title)
     };
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status,
-  //                  workshop, workshopRoom, workshopTime, workshopChanged]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status, workshops]
   function fromRow(r) {
     return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7], status: r[8],
-                        workshop: r[9], workshopRoom: r[10], workshopTime: r[11], workshopChanged: r[12] });
+                        workshops: r[9] });
   }
 
   const HEADER_ALIASES = {
@@ -425,7 +464,7 @@
   }
 
   return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl,
-           workshopRecentlyChanged, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
+           workshopTimeline, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });

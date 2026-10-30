@@ -56,8 +56,8 @@ class SheetToStudentsTest(unittest.TestCase):
         students, problems = sts.parse(sts.read_tables(raw))
         self.assertEqual(students, [
             ["Батыржан Нұрали Амангелдіұлы", "Четверг", "10:30-12:30", "Aruzhan Torebek", "Gulnaz",
-             "Самообучение", "batyrzhan.n@tumo.world", "", "", "", "", "", ""],
-            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", "", "", "", "", ""],
+             "Самообучение", "batyrzhan.n@tumo.world", "", "", []],
+            ["Иван Петров", "Понедельник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", "", []],
         ])
         self.assertEqual(len(problems), 1)
         self.assertIn("Сломанный День", problems[0])
@@ -118,9 +118,9 @@ class SheetToStudentsTest(unittest.TestCase):
                                   "Тёмно Фиолетовый": "waitlist", "Светло Фиолетовый": "", "Пурпурный Ученик": ""})
         # inactive / waitlist rows keep only the name and stage
         red = next(s for s in students if s[0] == "Красный Ученик")
-        self.assertEqual(red, ["Красный Ученик", "", "", "", "", "Самообучение", "", "", "inactive", "", "", "", ""])
+        self.assertEqual(red, ["Красный Ученик", "", "", "", "", "Самообучение", "", "", "inactive", []])
         purple = next(s for s in students if s[0] == "Фиолетовый Ученик")
-        self.assertEqual(purple, ["Фиолетовый Ученик", "", "", "", "", "Самообучение", "", "", "waitlist", "", "", "", ""])
+        self.assertEqual(purple, ["Фиолетовый Ученик", "", "", "", "", "Самообучение", "", "", "waitlist", []])
         self.assertEqual(stats, {"red": 2, "purple": 2, "notes_inactive": 0, "notes_waitlist": 0})
 
     def test_active_row_wins_over_red_or_purple_old_row(self):
@@ -129,7 +129,7 @@ class SheetToStudentsTest(unittest.TestCase):
                 "ВТ ПТ 1630": [HEADER, row("Сара Мухтар", "Вторник", "Gulnaz", "Gulnaz")]}
         fills = {("ПН ЧТ 1030", 2): "FF0000", ("ВТ ПТ 1630", 2): "9900FF"}
         students, problems = sts.parse(sts.read_tables(xlsx(tabs, fills)))
-        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", "", "", "", "", "", "", ""]])
+        self.assertEqual(students, [["Сара Мухтар", "Пятница", "14:30-16:30", "Alinur", "Gulnaz", "Самообучение", "", "", "", []]])
         self.assertEqual(problems, [])  # an old red/purple copy is not an ambiguity
         # only red + purple rows: waitlist wins over inactive
         only_old = {k: v for k, v in tabs.items() if k != "ВТ ПТ 1430"}
@@ -211,10 +211,10 @@ class SheetToStudentsTest(unittest.TestCase):
         students, problems = sts.parse(sts.read_tables(raw, streams=("4",)), stats=stats)
         self.assertEqual(students, [
             ["Кумарбеков Диар", "Понедельник", "10:30-12:30", "Ayaulym", "", "Онбординг",
-             "diar.kumarbekov@tumo.world", "3 этаж, 7 WR", "", "", "", "", ""],
-            ["Салибек Айша", "Вторник", "16:30-18:30", "Aruzhan Torebek", "", "Онбординг", "", "2 этаж, зона SL", "", "", "", "", ""],
-            ["Ушедший Ученик", "", "", "", "", "Онбординг", "", "", "waitlist", "", "", "", ""],
-            ["Красный Ученик", "", "", "", "", "Онбординг", "", "", "inactive", "", "", "", ""],
+             "diar.kumarbekov@tumo.world", "3 этаж, 7 WR", "", []],
+            ["Салибек Айша", "Вторник", "16:30-18:30", "Aruzhan Torebek", "", "Онбординг", "", "2 этаж, зона SL", "", []],
+            ["Ушедший Ученик", "", "", "", "", "Онбординг", "", "", "waitlist", []],
+            ["Красный Ученик", "", "", "", "", "Онбординг", "", "", "inactive", []],
         ])
         self.assertEqual(problems, [])
         self.assertEqual(stats, {"red": 1, "purple": 0, "notes_inactive": 0, "notes_waitlist": 1})
@@ -225,32 +225,53 @@ class SheetToStudentsTest(unittest.TestCase):
         with_5 = sts.parse(sts.read_tables(raw))[0]
         self.assertEqual(with_5[-1][:6], ["Пятый Поток", "Вторник", "14:30-16:30", "Danel", "", "Онбординг"])
 
-    def test_workshops_tab_is_attached_by_email_then_name(self):
+    def test_workshop_sheet_is_attached_by_full_name(self):
         import datetime
         tabs = {"ПН ЧТ 1030": [HEADER,
                                row("Аскерұлы Есбер", "Понедельник", "Gulnaz", "Gulnaz", email="askeruly.esber@tumo.world"),
-                               row("Иван Петров", "Четверг", "Almas", "Almas"),
-                               row("Красный Ученик", "Понедельник", "Almas", "Almas")],
-                "Воркшопы": [["ФИО ученика", "Почта TUMO", "Воркшоп", "Кабинет", "Дни и время", "Дата изменения"],
-                             ["Другое Имя", "ASKERULY.ESBER@tumo.world", "Game Development 2", "3 этаж, 5 WR",
-                              "Вт, Пт 16:30–18:30", datetime.datetime(2026, 10, 28)],
-                             ["ИВАН ПЕТРОВ", None, "Robotics 1", "2 этаж", "Ср 15:00-17:00", "27.10.2026"],
-                             ["Красный Ученик", None, "Music 1", "", "", ""],
-                             ["Неизвестный Ученик", None, "Film 1", "", "", ""],
-                             [None, None, None, None, None, None]]}
-        raw = xlsx(tabs, {("ПН ЧТ 1030", 4): "FF0000"})
-        students, _ = sts.parse(sts.read_tables(raw))
-        rows = sts.read_workshop_rows(raw)
-        self.assertEqual(len(rows), 4)
+                               row("Иван Петров Сергеевич", "Четверг", "Almas", "Almas"),
+                               row("Красный Ученик", "Понедельник", "Almas", "Almas"),
+                               row("Айгерим Сапарова", "Понедельник", "Almas", "Almas"),
+                               row("Айгерим Сапарова Ерлановна", "Четверг", "Almas", "Almas")]}
+        master = xlsx(tabs, {("ПН ЧТ 1030", 4): "FF0000"})
+        workshops = xlsx({"Лист1": [
+            ["ФИО ученика", "Воркшоп", "Кабинет / Зона", "Коуч", "Дни и время", "Дата начала", "Дата окончания",
+             "Дата изменения", "Телефон"],
+            ["АСКЕРУЛЫ ЕСБЕР", "Game Development 2", "3 этаж, 5 WR", "Ахмет", "Вт, Пт 16:30–18:30",
+             datetime.datetime(2026, 11, 2), datetime.datetime(2026, 11, 27), "29.10.2026", "87001234567"],
+            ["Аскерұлы Есбер", "Robotics 1", "2 этаж", "Dana Kurak", "Вт, Пт 16:30–18:30", "01.10.2026", "31.10.2026", "", ""],
+            ["Иван Петров", "Music 1", "", "", "", "", "", "", ""],        # no patronymic, unique -> matched
+            ["Айгерим Сапарова", "Film 1", "", "", "", "", "", "", ""],    # exact name wins over the longer one
+            ["Красный Ученик", "Design 1", "", "", "", "", "", "", ""],    # inactive -> not attached
+            ["Неизвестный Ученик", "3D 1", "", "", "", "", "", "", ""],
+            [None, None, None, None, None, None, None, None, None]]})
+        students, _ = sts.parse(sts.read_tables(master))
+        rows = sts.read_workshop_rows(workshops)
+        self.assertEqual(len(rows), 6)
         unmatched = sts.attach_workshops(students, rows)
         by_name = {s[0]: s for s in students}
-        self.assertEqual(by_name["Аскерұлы Есбер"][9:13], ["Game Development 2", "3 этаж, 5 WR", "Вт, Пт 16:30–18:30", "2026-10-28"])
-        self.assertEqual(by_name["Иван Петров"][9:13], ["Robotics 1", "2 этаж", "Ср 15:00-17:00", "2026-10-27"])
-        self.assertEqual(by_name["Красный Ученик"][9:13], ["", "", "", ""])  # inactive: name only
-        self.assertEqual([w["workshop"] for w in unmatched], ["Music 1", "Film 1"])
-        # no «Воркшопы» tab -> nothing, CSV -> nothing
-        self.assertEqual(sts.read_workshop_rows(xlsx({"ПН ЧТ 1030": [HEADER]})), [])
+        self.assertEqual(by_name["Аскерұлы Есбер"][9], [
+            ["Robotics 1", "2 этаж", "Dana Kurak", "Вт, Пт 16:30–18:30", "2026-10-01", "2026-10-31", ""],
+            ["Game Development 2", "3 этаж, 5 WR", "Akhmet", "Вт, Пт 16:30–18:30", "2026-11-02", "2026-11-27", "2026-10-29"],
+        ])  # sorted by start date; coach stored like master-sheet coaches; the phone column is never read
+        self.assertNotIn("87001234567", repr(students))
+        self.assertEqual([w[0] for w in by_name["Иван Петров Сергеевич"][9]], ["Music 1"])
+        self.assertEqual([w[0] for w in by_name["Айгерим Сапарова"][9]], ["Film 1"])
+        self.assertEqual(by_name["Айгерим Сапарова Ерлановна"][9], [])
+        self.assertEqual(by_name["Красный Ученик"][9], [])
+        self.assertEqual([w["title"] for w in unmatched], ["Design 1", "3D 1"])
+        # the master sheet's own «Воркшопы» tab is read too; no such tab / CSV -> nothing
+        self.assertEqual(sts.read_workshop_rows(master, sts.WORKSHOP_TAB_RE), [])
         self.assertEqual(sts.read_workshop_rows(b"a,b\n1,2\n"), [])
+
+    def test_workshops_survive_save_and_load(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "students.json"
+            ws = [["Game Development 2", "3 этаж", "Ахмет", "Вт, Пт 16:30–18:30", "2026-11-02", "2026-11-27", ""]]
+            sts.save_student_data([["Иван Петров", "Вторник", "10:30-12:30", "Almas", "", "Самообучение", "", "", "", ws]], path)
+            self.assertEqual(sts.load_student_data(path)[0][9], ws)
 
     def test_html_login_page_is_rejected(self):
         with self.assertRaises(SystemExit):
