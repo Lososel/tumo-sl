@@ -264,6 +264,13 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual(sts.read_workshop_rows(master, sts.WORKSHOP_TAB_RE), [])
         self.assertEqual(sts.read_workshop_rows(b"a,b\n1,2\n"), [])
 
+    def test_workshop_leader_header_is_the_coach(self):
+        workshops = xlsx({"3d-modeling": [
+            ["ФИО ученика", "Почта TUMO", "Воркшоп", "Кабинет / Зона", "Workshop Leader", "Дни и время"],
+            ["Иван Петров", None, "3D-моделирование I", "3 этаж, WR 5", "Rizakhmet", "Пн, Чт 10:30–12:30"]]})
+        [row_] = sts.read_workshop_rows(workshops)
+        self.assertEqual((row_["title"], row_["room"], row_["coach"]), ("3D-моделирование I", "3 этаж, WR 5", "Rizakhmet"))
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path

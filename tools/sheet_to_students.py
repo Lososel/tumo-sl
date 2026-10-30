@@ -213,6 +213,7 @@ WORKSHOP_HEADERS = {
     "воркшоп": "workshop", "название": "workshop", "workshop": "workshop", "направление": "workshop", "тема": "workshop",
     "кабинет": "room", "зона": "room", "аудитория": "room", "room": "room",
     "коуч": "coach", "ведущий": "coach", "лидер": "coach", "тренер": "coach", "coach": "coach", "leader": "coach",
+    "workshop leader": "coach", "workshop coach": "coach",
     "дни и время": "time", "расписание": "time", "время": "time", "дни": "time", "schedule": "time", "time": "time",
     "дата начала": "start", "начало": "start", "с даты": "start", "start": "start",
     "дата окончания": "end", "окончание": "end", "конец": "end", "по дату": "end", "end": "end",
