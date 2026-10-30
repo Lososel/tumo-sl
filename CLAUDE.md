@@ -37,6 +37,20 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   unique). Stored as field 9 `workshops` = [[title, room, leader, time, start, end, changed]].
   The instructor is the «Воркшоп лидер» (KZ «Воркшоп лидері»), never «коуч» (that's the SL coach).
   Never invent workshop data; the source of truth is the TUMO platform.
+- The 9 workshops and their leaders (one leader per workshop):
+  | Workshop | Воркшоп лидер | Email |
+  |---|---|---|
+  | Music | Жананов Нурасыл | nurassyl.zhananov@tumo.center |
+  | Animation | Мырзахмет Аружан Болатқызы | aruzhan.myrzakhmet@tumo.center |
+  | Graphic Design | Алханова Райхан Абылханқызы | alkhanova.raikhan@tumo.center |
+  | Motion Graphics | Санакбеков Алишер Базарбекович | sanakbekov.alisher@tumo.center |
+  | Game Dev | Ертаев Рамазан | ramazan.yertayev@tumo.center |
+  | Filmmaking | Жүнісбек Марғұлан Серікқалиұлы | margulan.zhunisbek@tumo.center |
+  | 3D (3D-моделирование) | Даулетбай Ризахмет Абилжанович («Rizakhmet» in the sheet) | rizahmet.dauletbay@tumo.center |
+  | Robotics | Бердиходжаев Адилбек Сайлауович | berdikhodzhaev.adilbek@tumo.center |
+  | Programming | Ахметова Дана Саятовна | akhmetova.dana@tumo.center |
+  A workshop row's «Workshop Leader» should be the leader of that workshop; if it's empty, ask
+  rather than guess.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last
