@@ -140,6 +140,8 @@
     color:var(--purple-deep);
     min-width:0;
   }
+  /* a title that wraps keeps a narrow box, so the side lines reach the text instead of stopping at the edges */
+  .divider-heading h1{max-width:11em;}
   .lede{
     color:var(--text);
     font-size:clamp(16px,2vw,18px);
@@ -528,7 +530,7 @@
 
     <div class="search-block">
       <div class="search-row">
-        <input id="searchInput" class="search-input" type="search" placeholder="Имя и фамилия учащегося (от 3 букв)" autocomplete="off" autocapitalize="words" enterkeyhint="search" maxlength="120">
+        <input id="searchInput" class="search-input" type="search" placeholder="Имя и фамилия учащегося" autocomplete="off" autocapitalize="words" enterkeyhint="search" maxlength="120">
         <button id="searchBtn" class="btn btn-search" data-i18n="searchBtn">Найти</button>
       </div>
     </div>
@@ -698,7 +700,7 @@
             waTitle:'Сообщество в WhatsApp', waDays:{pn_cht:'Пн/Чт', vt_pt:'Вт/Пт'},
             passwordHint:'Используйте имя пользователя (почта без @tumo.world) и временный пароль для входа на первом занятии — там же пароль нужно будет сменить.' },
       searchBtn:'Найти',
-      searchPlaceholder:'Имя и фамилия учащегося (от 3 букв)',
+      searchPlaceholder:'Имя и фамилия учащегося',
       factSchedule:'график обучения', factMainDay:'основной день самообучения', factCoach:'коуч', factCoachEmail:'email коуча', factStage:'этап обучения', factRoom:'кабинет',
       factStudentEmail:'ПОЧТА TUMO ученика',
       comingSoon:'Скоро появится',
@@ -737,7 +739,7 @@
       ]
     },
     kz:{
-      heroTitle:'TUMO Astana-ға қош келдіңіз!',
+      heroTitle:'TUMO Astana‑ға қош келдіңіз!',
       lede:'Мұнда сіз өзіңіздің сабақ кестеңізді, өзіндік оқу күніңізді және воркшоп туралы өзекті ақпаратты тексере аласыз. Толығырақ білу үшін оқушының аты-жөнін енгізіңіз — әр сөздің алғашқы 3 әрпін жазу жеткілікті.',
       noResults:'Ештеңе табылмады — жазылуын тексеріңіз немесе төменде бізге жазыңыз.',
       multiMatch:(n)=>`Бірнеше оқушы табылды (${n}) — аты, күні мен уақыты бойынша керегін таңдаңыз.`,
@@ -763,7 +765,7 @@
             waTitle:'WhatsApp қауымдастығы', waDays:{pn_cht:'Дс/Бс', vt_pt:'Сс/Жм'},
             passwordHint:'Алғашқы сабақта кіру үшін пайдаланушы атын (@tumo.world-сіз пошта) және уақытша құпия сөзді пайдаланыңыз — сол жерде құпия сөзді ауыстыру қажет болады.' },
       searchBtn:'Табу',
-      searchPlaceholder:'Оқушының аты-жөні (3 әріптен)',
+      searchPlaceholder:'Оқушының аты-жөні',
       factSchedule:'оқу кестесі', factMainDay:'негізгі өзіндік оқу күні', factCoach:'коуч', factCoachEmail:'коучтың email-і', factStage:'оқу кезеңі', factRoom:'кабинет',
       factStudentEmail:'Оқушының TUMO поштасы',
       comingSoon:'Жақында пайда болады',
