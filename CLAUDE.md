@@ -47,7 +47,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).
 - «Сохранить на этом устройстве» keeps ids in localStorage (`tumo-saved-students`).
-- «📅 Добавить в Google Календарь»: inside each workshop block (that workshop, weekly until its end) and
+- «Добавить в Google Календарь» (calendar SVG icon, no emoji): inside each workshop block (that workshop, weekly until its end) and
   in the card footer for the class (SL = main day weekly, onboarding = both days; hidden while a
   workshop runs). Copy link and save are icon buttons next to
   the name. (`buildIcs` stays in `js/student-data.js` but has no button.)

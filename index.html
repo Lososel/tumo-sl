@@ -238,6 +238,7 @@
   .icon-btn.saved{color:var(--purple-deep);}
   .icon-btn.saved svg{fill:currentColor;}
   .act-btn.primary{background:var(--purple-deep);border-color:var(--purple-deep);color:#fff;}
+  .act-btn svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
   .act-btn.primary:hover{background:#9b47b0;border-color:#9b47b0;}
   .saved-bar{margin:18px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   .saved-bar .saved-title{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
@@ -680,7 +681,7 @@
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
       updatedAt:(date)=>`Данные обновлены: ${date}`,
       // card actions, share links, workshop
-      act:{ google:'📅 Добавить в Google Календарь', copy:'Скопировать ссылку', copied:'Ссылка скопирована',
+      act:{ google:'Добавить в Google Календарь', copy:'Скопировать ссылку', copied:'Ссылка скопирована',
             save:'Сохранить на этом устройстве', saved:'Сохранено на этом устройстве', install:'📲 Установить на телефон',
             iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
@@ -749,7 +750,7 @@
       tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
       updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
-      act:{ google:'📅 Google Күнтізбеге қосу', copy:'Сілтемені көшіру', copied:'Сілтеме көшірілді',
+      act:{ google:'Google Күнтізбеге қосу', copy:'Сілтемені көшіру', copied:'Сілтеме көшірілді',
             save:'Осы құрылғыда сақтау', saved:'Осы құрылғыда сақталды', install:'📲 Телефонға орнату',
             iosHint:'iPhone-да: «Бөлісу» → «Басты экранға қосу» — сақталған карточка бір рет басқанда ашылады.',
             savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
@@ -913,7 +914,7 @@
           ${fact(w.dates, workshopDatesText(x))}
           ${fact(w.time, x.time)}
         </div>
-        ${google ? `<div class="ws-actions"><a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${t('act').google}</a></div>` : ''}
+        ${google ? `<div class="ws-actions"><a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${ICON_CAL}${t('act').google}</a></div>` : ''}
       </div>`;
   }
   // The running workshop: shown first on the card, highlighted.
@@ -955,11 +956,12 @@
     const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
     return google ? `
       <div class="card-actions">
-        <a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${t('act').google}</a>
+        <a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${ICON_CAL}${t('act').google}</a>
       </div>` : '';
   }
   // Copy link and save-on-this-device as small icon buttons next to the student's name.
   const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+  const ICON_CAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
   const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
   const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
   function headActionsHtml(r){
