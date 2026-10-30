@@ -31,12 +31,18 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Workshops come from the workshop sheet «Workshops 26.10» (Drive file
   `1E1L3mJdGASq0hkV83i5knWpXgmWNF8eO1e7HBiAcIYE`, workflow var `WORKSHOP_SHEET_FILE_ID`) and/or a
   «Воркшопы» tab in the master sheet. Header row: ФИО ученика | Почта TUMO (optional) | Воркшоп |
-  Кабинет / Зона | Коуч | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
+  Кабинет / Зона | Workshop Leader (or «Лидер воркшопа» / «Коуч») | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
   student per workshop. Matched by full name (email wins; a name without patronymic only if
-  unique). Stored as field 9 `workshops` = [[title, room, coach, time, start, end, changed]].
+  unique). Stored as field 9 `workshops` = [[title, room, leader, time, start, end, changed]].
+  The instructor is the «Лидер воркшопа» / «Воркшоп лидері», never «коуч» (that's the SL coach).
   Never invent workshop data; the source of truth is the TUMO platform.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
+- A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last
+  session, e.g. «26 октября – 19 ноября» for Пн/Чт 26.10–22.11.
+- While a workshop runs (computed in the browser for today): it is the first, highlighted block;
+  «Этап обучения» = «Воркшоп»; the SL schedule and main day are crossed out with «Приостановлено на
+  время воркшопа»; the calendar's SL class starts the day after the workshop.
 
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).

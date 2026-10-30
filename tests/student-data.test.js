@@ -235,3 +235,31 @@ test('workshopTimeline: current / next workshop and the alerts', () => {
   tl = S.workshopTimeline(rec([]), now);
   assert.deepStrictEqual([tl.current, tl.next, tl.nextSoon, tl.changed], [null, null, false, false]);
 });
+
+test('workshop dates: one month, clipped to the days the group meets', () => {
+  const w = (start, end, time) => S.fromJson({ students: [['Иван Петров', 'Вторник', '10:30-12:30', 'Almas', '', 'Самообучение', '', '', '',
+    [['3D-моделирование I', '3 этаж, WR 5', 'Rizakhmet', time, start, end, '']]]] })[0].workshops[0];
+  const ws = w('2026-10-26', '2026-11-22', 'Пн, Чт 10:30–12:30');
+  assert.strictEqual(ws.leader, 'Rizakhmet');
+  assert.strictEqual(S.formatDateRange(S.workshopDates(ws), 'ru'), '26 октября – 19 ноября');   // last Thursday
+  assert.strictEqual(S.formatDateRange(S.workshopDates(ws), 'kk'), '26 қазан – 19 қараша');
+  // no end date in the sheet: a month from the start (25.11), last meeting Monday 23.11
+  assert.strictEqual(S.formatDateRange(S.workshopDates(w('2026-10-26', '', 'Пн, Чт 10:30')), 'ru'), '26 октября – 23 ноября');
+  assert.strictEqual(S.workshopEnd(w('2026-10-26', '', '')).getDate(), 25);
+  assert.strictEqual(S.formatDateRange(S.workshopDates(w('2026-12-14', '2027-01-10', '')), 'ru'), '14 декабря 2026 – 10 января 2027');
+  assert.strictEqual(S.workshopDates(w('', '2026-11-22', 'Пн 10:30')), null);
+});
+
+test('during a workshop: stage «Воркшоп», class calendar resumes after it', () => {
+  const [r] = S.fromJson({ students: [['Иван Петров', 'Вторник', '10:30-12:30', 'Almas', '', 'Самообучение', '', '', '',
+    [['3D-моделирование I', '3 этаж, WR 5', 'Rizakhmet', 'Пн, Чт 10:30–12:30', '2026-10-26', '2026-11-22', '']]]] });
+  const during = new Date(2026, 9, 30, 12), before = new Date(2026, 9, 20), after = new Date(2026, 10, 23);
+  assert.strictEqual(S.effectiveStage(r, during), S.WORKSHOP_STAGE);
+  assert.strictEqual(S.effectiveStage(r, before), 'Самообучение');
+  assert.strictEqual(S.effectiveStage(r, after), 'Самообучение');
+  assert.strictEqual(S.formatDay(S.classResumes(r, during), 'ru'), '23 ноября');
+  const opts = { now: during, location: 'TUMO Astana', classTitle: 'TUMO: самообучение', workshopTitle: 'TUMO: воркшоп' };
+  assert.match(S.buildIcs(r, opts), /DTSTART;TZID=Asia\/Almaty:20261124T103000\r\n/);   // first Tuesday after 22.11
+  assert.match(S.buildIcs(r, opts), /BYDAY=MO,TH;UNTIL=20261122T185959Z/);
+  assert.match(new URL(S.googleCalendarUrl(r, opts)).searchParams.get('dates'), /^20261124T103000/);
+});

@@ -212,14 +212,15 @@ WORKSHOP_HEADERS = {
     "почта tumo": "email", "почта тумо": "email", "email": "email",
     "воркшоп": "workshop", "название": "workshop", "workshop": "workshop", "направление": "workshop", "тема": "workshop",
     "кабинет": "room", "зона": "room", "аудитория": "room", "room": "room",
-    "коуч": "coach", "ведущий": "coach", "лидер": "coach", "тренер": "coach", "coach": "coach", "leader": "coach",
-    "workshop leader": "coach", "workshop coach": "coach",
+    # the workshop leader (older sheets call the column «Коуч»)
+    "лидер": "leader", "воркшоп лидер": "leader", "workshop leader": "leader", "leader": "leader",
+    "коуч": "leader", "ведущий": "leader", "тренер": "leader", "coach": "leader", "workshop coach": "leader",
     "дни и время": "time", "расписание": "time", "время": "time", "дни": "time", "schedule": "time", "time": "time",
     "дата начала": "start", "начало": "start", "с даты": "start", "start": "start",
     "дата окончания": "end", "окончание": "end", "конец": "end", "по дату": "end", "end": "end",
     "дата изменения": "changed", "изменено": "changed", "изменен": "changed", "changed": "changed", "updated": "changed",
 }
-WORKSHOP_FIELDS = ["title", "room", "coach", "time", "start", "end", "changed"]  # one workshop in students.json
+WORKSHOP_FIELDS = ["title", "room", "leader", "time", "start", "end", "changed"]  # one workshop in students.json
 
 
 def _iso_date(value):
@@ -251,7 +252,7 @@ def _workshop_columns(header):
 
 
 def read_workshop_rows(raw, tab_re=None):
-    """xlsx bytes -> [{name, email, title, room, coach, time, start, end, changed}].
+    """xlsx bytes -> [{name, email, title, room, leader, time, start, end, changed}].
 
     Reads every tab whose header has a «Воркшоп» column and a «ФИО ученика» (or «Почта TUMO»)
     column; tab_re limits the tabs (the master sheet: only «Воркшопы…» tabs). Other columns
@@ -281,7 +282,7 @@ def read_workshop_rows(raw, tab_re=None):
                 "name": proper_case(fix_mixed_script(clean_ws(get("name")))),
                 "email": clean_ws(get("email")).lower(),
                 "title": title, "room": clean_ws(get("room")),
-                "coach": canon_coach(get("coach")), "time": clean_ws(get("time")),
+                "leader": canon_coach(get("leader")), "time": clean_ws(get("time")),
                 "start": _iso_date(get("start")), "end": _iso_date(get("end")), "changed": _iso_date(get("changed")),
             })
     return out

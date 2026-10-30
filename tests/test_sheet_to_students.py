@@ -269,7 +269,7 @@ class SheetToStudentsTest(unittest.TestCase):
             ["ФИО ученика", "Почта TUMO", "Воркшоп", "Кабинет / Зона", "Workshop Leader", "Дни и время"],
             ["Иван Петров", None, "3D-моделирование I", "3 этаж, WR 5", "Rizakhmet", "Пн, Чт 10:30–12:30"]]})
         [row_] = sts.read_workshop_rows(workshops)
-        self.assertEqual((row_["title"], row_["room"], row_["coach"]), ("3D-моделирование I", "3 этаж, WR 5", "Rizakhmet"))
+        self.assertEqual((row_["title"], row_["room"], row_["leader"]), ("3D-моделирование I", "3 этаж, WR 5", "Rizakhmet"))
 
     def test_workshops_survive_save_and_load(self):
         import tempfile

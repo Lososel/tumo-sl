@@ -217,6 +217,16 @@
   .ws-alert{margin-top:20px;display:flex;gap:10px;align-items:flex-start;background:#fff7ed;border:2px solid #fb923c;
     color:#9a3412;border-radius:12px;padding:12px 14px;font-weight:700;font-size:15px;}
   .badge.ws-changed{background:#fff7ed;color:#c2410c;}
+  /* the running workshop: first on the card, the strongest block */
+  .ws-block.ws-active{margin-top:16px;border:3px solid var(--purple-deep);background:#fff;padding:0;overflow:hidden;
+    box-shadow:0 6px 20px rgba(178,94,199,.18);}
+  .ws-active .ws-title{background:var(--purple-deep);color:#fff;padding:8px 20px;}
+  .ws-active .ws-name{font-size:24px;padding:14px 20px 0;}
+  .ws-active .facts{padding:0 20px 18px;}
+  .ws-active + .facts{margin-top:22px;}
+  .badge.ws-on{background:var(--purple-deep);color:#fff;}
+  .paused-old{text-decoration:line-through;color:var(--muted);}
+  .paused-tag{display:block;margin-top:4px;font-size:13px;font-weight:700;color:#c2410c;}
   .saved-bar{margin:18px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   .saved-bar .saved-title{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
   .saved-chip{display:inline-flex;align-items:center;border:2px solid var(--purple);border-radius:999px;background:#fff;overflow:hidden;}
@@ -638,7 +648,8 @@
   };
   const STAGE_TR = {
     'Самообучение': {ru:'Самообучение', kz:'Өзіндік оқу'},
-    'Онбординг':    {ru:'Онбординг',    kz:'Онбординг'}
+    'Онбординг':    {ru:'Онбординг',    kz:'Онбординг'},
+    'Воркшоп':      {ru:'Воркшоп',      kz:'Воркшоп'}
   };
   const ONBOARDING = 'Онбординг';
   // Shared first-login password of new TUMO accounts, shown on onboarding cards like in
@@ -662,9 +673,10 @@
             iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
             classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
-      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', coach:'Коуч воркшопа',
-           time:'Дни и время', dates:'Даты', from:'с', until:'по',
-           badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп',
+      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Лидер воркшопа',
+           time:'Дни и время', dates:'Даты проведения', until:(d)=>`до ${d}`,
+           paused:'Приостановлено на время воркшопа', resumes:(date)=>`Самообучение продолжится с ${date}`,
+           badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп', badgeOn:'Воркшоп',
            changed:(date)=>`Воркшоп изменён ${date} — проверьте название, кабинет и время.`,
            soon:(date, title)=>`С ${date} новый воркшоп: «${title}». Проверьте кабинет и время ниже.` },
       // red row / dark purple row in the master sheet
@@ -730,9 +742,10 @@
             iosHint:'iPhone-да: «Бөлісу» → «Басты экранға қосу» — сақталған карточка бір рет басқанда ашылады.',
             savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
             classSL:'TUMO: өзіндік оқу', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
-      ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', coach:'Воркшоп коучы',
-           time:'Күндері мен уақыты', dates:'Күндері', from:'', until:'–',
-           badge:'Воркшоп өзгерді', badgeSoon:'Жақында жаңа воркшоп',
+      ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', leader:'Воркшоп лидері',
+           time:'Күндері мен уақыты', dates:'Өткізу күндері', until:(d)=>`${d} дейін`,
+           paused:'Воркшоп кезінде тоқтатылған', resumes:(date)=>`Өзіндік оқу ${date} күні қайта басталады`,
+           badge:'Воркшоп өзгерді', badgeSoon:'Жақында жаңа воркшоп', badgeOn:'Воркшоп',
            changed:(date)=>`Воркшоп ${date} өзгерді — атауын, кабинетін және уақытын тексеріңіз.`,
            soon:(date, title)=>`${date} бастап жаңа воркшоп: «${title}». Төмендегі кабинет пен уақытты тексеріңіз.` },
       statusInactive:{ badge:'Белсенді емес', text:'TUMO-да оқуды жалғастырғыңыз келсе, бізбен WhatsApp арқылы байланысыңыз.' },
@@ -864,45 +877,60 @@
   function storeSaved(ids){ try { localStorage.setItem(SAVED_KEY, JSON.stringify(ids)); } catch {} }
   const isoToDate = iso => /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.split('-').reverse().join('.') : '';
 
-  // «Текущий / Следующий воркшоп» from the workshop sheet: title, room/zone, coach, dates and
+  // «Текущий / Следующий воркшоп» from the workshop sheet: title, leader, room/zone, dates and
   // days/time, plus alerts for a new workshop starting soon or a recent change — the things
   // students miss when they're only announced in class or by e-mail.
-  function workshopSectionHtml(r){
-    const tl = StudentData.workshopTimeline(r, new Date(), 14);
-    if(!tl.current && !tl.next) return '';
+  const dateLang = () => currentLang === 'kz' ? 'kk' : 'ru';
+  function workshopDatesText(x){
+    const range = StudentData.workshopDates(x);
+    if(range) return StudentData.formatDateRange(range, dateLang());
+    const end = StudentData.workshopEnd(x);
+    return end ? t('ws').until(StudentData.formatDay(end, dateLang())) : '';
+  }
+  function workshopBlockHtml(x, label, cls){
     const w = t('ws');
-    const dateRange = x => {
-      const a = isoToDate(x.start), b = isoToDate(x.end);
-      return a && b ? `${w.from} ${a} ${w.until} ${b}`.trim() : (a ? `${w.from} ${a}`.trim() : (b ? `${w.until} ${b}`.trim() : ''));
-    };
-    const block = (x, label, highlight) => `
-      <div class="ws-block${highlight ? ' ws-upcoming' : ''}">
+    const fact = (name, value) => `<div><div class="fact-label">${name}</div><div class="fact-value">${escapeHtml(value) || t('comingSoon')}</div></div>`;
+    return `
+      <div class="ws-block${cls ? ' ' + cls : ''}">
         <div class="ws-title">${label}</div>
         <div class="ws-name">${escapeHtml(x.title)}</div>
         <div class="facts">
-          <div><div class="fact-label">${w.room}</div><div class="fact-value">${escapeHtml(x.room) || t('comingSoon')}</div></div>
-          <div><div class="fact-label">${w.coach}</div><div class="fact-value">${escapeHtml(displayCoachName(x.coach)) || t('comingSoon')}</div></div>
-          <div><div class="fact-label">${w.time}</div><div class="fact-value">${escapeHtml(x.time) || t('comingSoon')}</div></div>
-          <div><div class="fact-label">${w.dates}</div><div class="fact-value">${escapeHtml(dateRange(x)) || t('comingSoon')}</div></div>
+          ${fact(w.leader, displayCoachName(x.leader))}
+          ${fact(w.room, x.room)}
+          ${fact(w.dates, workshopDatesText(x))}
+          ${fact(w.time, x.time)}
         </div>
       </div>`;
+  }
+  // The running workshop: shown first on the card, highlighted.
+  function activeWorkshopHtml(r){
+    const tl = StudentData.workshopTimeline(r, new Date(), 14);
+    return tl.current ? workshopBlockHtml(tl.current, t('ws').current, 'ws-active') : '';
+  }
+  // Alerts and the next workshop (below the class facts).
+  function workshopSectionHtml(r){
+    const tl = StudentData.workshopTimeline(r, new Date(), 14);
+    const w = t('ws');
     const alerts = [];
     if(tl.nextSoon) alerts.push(w.soon(isoToDate(tl.next.start), escapeHtml(tl.next.title)));
     if(tl.changed){
       const ch = [tl.current, tl.next].filter(x => x && x.changed).map(x => x.changed).sort().pop();
       alerts.push(w.changed(isoToDate(ch)));
     }
-    return `
-      ${alerts.map(a => `<div class="ws-alert" role="alert">⚠️ <span>${a}</span></div>`).join('')}
-      ${tl.current ? block(tl.current, w.current, false) : ''}
-      ${tl.next ? block(tl.next, w.next, tl.nextSoon) : ''}`;
+    return alerts.map(a => `<div class="ws-alert" role="alert">⚠️ <span>${a}</span></div>`).join('')
+      + (tl.next ? workshopBlockHtml(tl.next, w.next, tl.nextSoon ? 'ws-upcoming' : '') : '');
   }
-  // the badge in the card's corner: the most urgent workshop news, if any
+  // the badge in the card's corner: the most urgent workshop news, else «Воркшоп» while one runs
   function workshopBadge(r){
     const tl = StudentData.workshopTimeline(r, new Date(), 14);
     if(tl.nextSoon) return `<span class="badge ws-changed">${t('ws').badgeSoon}</span>`;
     if(tl.changed) return `<span class="badge ws-changed">${t('ws').badge}</span>`;
+    if(tl.current) return `<span class="badge ws-on">${t('ws').badgeOn}</span>`;
     return '';
+  }
+  // A class fact while a workshop runs: the usual value crossed out + «Приостановлено на время воркшопа».
+  function pausedFact(value, inWorkshop){
+    return inWorkshop ? `<span class="paused-old">${value}</span><span class="paused-tag">${t('ws').paused}</span>` : value;
   }
 
   function calendarOpts(r){
@@ -1127,25 +1155,30 @@
         const wsBadge = workshopBadge(r);
         const onbHtml = onboardingCardHtml(r, index, email, group);
         card.innerHTML = (wsBadge ? onbHtml.replace(/<span class="badge onboarding">[^<]*<\/span>/, wsBadge) : onbHtml)
-          + workshopSectionHtml(r) + actionsHtml(r);
+          + activeWorkshopHtml(r) + workshopSectionHtml(r) + actionsHtml(r);
         results.appendChild(card);
         if(group && window.QRCode){
           new QRCode(document.getElementById('qr-'+index), { text: group.link, width: 120, height: 120, colorDark: '#1b1c1c', colorLight: '#ffffff' });
         }
         return;
       }
+      // during a workshop the student doesn't attend self-learning: stage «Воркшоп», SL schedule paused
+      const now = new Date();
+      const inWorkshop = !!StudentData.workshopTimeline(r, now, 14).current;
+      const resumes = inWorkshop ? StudentData.formatDay(StudentData.classResumes(r, now), dateLang()) : '';
       card.innerHTML = `
         ${workshopBadge(r)
           || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
         <h3>${escapeHtml(r.n)}</h3>
+        ${activeWorkshopHtml(r)}
         <div class="facts">
           <div>
             <div class="fact-label">${t('factSchedule')}</div>
-            <div class="fact-value">${scheduleDays(r.d)} ${r.t}</div>
+            <div class="fact-value">${pausedFact(`${scheduleDays(r.d)} ${r.t}`, inWorkshop)}</div>
           </div>
           <div>
             <div class="fact-label">${t('factMainDay')}</div>
-            <div class="fact-value">${onboarding ? t('comingSoon') : trDay(r.d)}</div>
+            <div class="fact-value">${pausedFact(onboarding ? t('comingSoon') : trDay(r.d), inWorkshop)}</div>
           </div>
           <div>
             <div class="fact-label">${t('factCoach')}</div>
@@ -1157,7 +1190,7 @@
           </div>
           <div>
             <div class="fact-label">${t('factStage')}</div>
-            <div class="fact-value">${escapeHtml(trStage(r.stage)) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(trStage(StudentData.effectiveStage(r, now))) || t('comingSoon')}</div>
           </div>
           ${r.room ? `<div>
             <div class="fact-label">${t('factRoom')}</div>
@@ -1168,7 +1201,8 @@
           ? `<div class="note warn">${t('noteWarn')}</div>`
           : (onboarding ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
         }
-        ${workshopSectionHtml(r) || `<div class="note info">${t('noteWorkshop')}</div>`}
+        ${inWorkshop ? `<div class="note info">${t('ws').resumes(resumes)}</div>` : ''}
+        ${workshopSectionHtml(r) || (inWorkshop ? '' : `<div class="note info">${t('noteWorkshop')}</div>`)}
         ${group ? `
         <div class="group-block">
           <div class="group-qr" id="qr-${index}"></div>
