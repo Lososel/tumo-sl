@@ -32,10 +32,27 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   `1E1L3mJdGASq0hkV83i5knWpXgmWNF8eO1e7HBiAcIYE`, workflow var `WORKSHOP_SHEET_FILE_ID`) and/or a
   «Воркшопы» tab in the master sheet. Header row: ФИО ученика | Почта TUMO (optional) | Воркшоп |
   Кабинет / Зона | Workshop Leader (or «Лидер воркшопа» / «Коуч») | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
-  student per workshop. Matched by full name (email wins; a name without patronymic only if
+  student per workshop. The header must stay in row 1; a group title row (text only in column A,
+  «Воркшоп» empty) is skipped. Matched by full name (email wins; a name without patronymic only if
   unique). Stored as field 9 `workshops` = [[title, room, leader, time, start, end, changed]].
   The instructor is the «Воркшоп лидер» (KZ «Воркшоп лидері»), never «коуч» (that's the SL coach).
   Never invent workshop data; the source of truth is the TUMO platform.
+- The 9 workshops and their leaders (one leader per workshop):
+  | Workshop | Воркшоп лидер | Email |
+  |---|---|---|
+  | Music | Жананов Нурасыл | nurassyl.zhananov@tumo.center |
+  | Animation | Мырзахмет Аружан Болатқызы | aruzhan.myrzakhmet@tumo.center |
+  | Graphic Design | Алханова Райхан Абылханқызы | alkhanova.raikhan@tumo.center |
+  | Motion Graphics | Санакбеков Алишер Базарбекович | sanakbekov.alisher@tumo.center |
+  | Game Dev | Ертаев Рамазан | ramazan.yertayev@tumo.center |
+  | Filmmaking | Жүнісбек Марғұлан Серікқалиұлы | margulan.zhunisbek@tumo.center |
+  | 3D (3D-моделирование) | Даулетбай Ризахмет Абилжанович («Rizakhmet» in the sheet) | rizahmet.dauletbay@tumo.center |
+  | Robotics | Бердиходжаев Адилбек Сайлауович | berdikhodzhaev.adilbek@tumo.center |
+  | Programming | Ахметова Дана Саятовна | akhmetova.dana@tumo.center |
+  A workshop row's «Workshop Leader» should be the leader of that workshop; if it's empty, ask
+  rather than guess.
+  The workshop block shows the leader's email (`WORKSHOP_LEADERS` in `js/student-data.js`, matched by
+  surname or first name, Cyrillic or Latin); add a new leader there.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last

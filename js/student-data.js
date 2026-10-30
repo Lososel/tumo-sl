@@ -67,6 +67,28 @@
     return out.charAt(0).toUpperCase() + out.slice(1);
   }
 
+  // The workshop leaders (one per workshop): their surname / first name in Cyrillic and Latin -> TUMO email.
+  const WORKSHOP_LEADERS = [
+    { email: 'nurassyl.zhananov@tumo.center',      surname: ['жананов', 'zhananov'],             first: ['нурасыл', 'nurassyl', 'nurasyl'] },   // Music
+    { email: 'aruzhan.myrzakhmet@tumo.center',     surname: ['мырзахмет', 'myrzakhmet'],         first: ['аружан', 'aruzhan'] },                // Animation
+    { email: 'alkhanova.raikhan@tumo.center',      surname: ['алханова', 'alkhanova'],           first: ['райхан', 'raikhan', 'raihan'] },      // Graphic Design
+    { email: 'sanakbekov.alisher@tumo.center',     surname: ['санакбеков', 'sanakbekov'],        first: ['алишер', 'alisher'] },                // Motion Graphics
+    { email: 'ramazan.yertayev@tumo.center',       surname: ['ертаев', 'yertayev', 'ertayev'],   first: ['рамазан', 'ramazan'] },               // Game Dev
+    { email: 'margulan.zhunisbek@tumo.center',     surname: ['жунисбек', 'zhunisbek'],           first: ['маргулан', 'margulan'] },             // Filmmaking
+    { email: 'rizahmet.dauletbay@tumo.center',     surname: ['даулетбай', 'dauletbay'],          first: ['ризахмет', 'rizakhmet', 'rizahmet'] }, // 3D
+    { email: 'berdikhodzhaev.adilbek@tumo.center', surname: ['бердиходжаев', 'berdikhodzhaev'],  first: ['адилбек', 'adilbek'] },               // Robotics
+    { email: 'akhmetova.dana@tumo.center',         surname: ['ахметова', 'akhmetova'],           first: ['дана', 'dana'] }                      // Programming
+  ];
+  const KK_TO_RU = { 'ә': 'а', 'ғ': 'г', 'қ': 'к', 'ң': 'н', 'ө': 'о', 'ұ': 'у', 'ү': 'у', 'һ': 'х', 'і': 'и', 'ё': 'е' };
+  // «Rizakhmet», «Мырзахмет Аружан», «Жүнісбек Марғұлан» -> the leader's email ('' if unknown). A surname wins
+  // over a first name.
+  function workshopLeaderEmail(leader) {
+    const words = String(leader || '').toLowerCase().replace(/[әғқңөұүһіё]/g, c => KK_TO_RU[c]).split(/[^a-zа-я]+/).filter(Boolean);
+    const hit = WORKSHOP_LEADERS.find(l => words.some(w => l.surname.includes(w)))
+      || WORKSHOP_LEADERS.find(l => words.some(w => l.first.includes(w)));
+    return hit ? hit.email : '';
+  }
+
   // coachName('Dana Akhmetova', 'ru') -> 'Дана Ахметова'; lang: 'ru' | 'kk'
   function coachName(name, lang) {
     if (!name) return name;
@@ -527,7 +549,7 @@
     throw lastError;
   }
 
-  return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl, workshopCalendarUrl,
+  return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl, workshopCalendarUrl, workshopLeaderEmail,
            workshopTimeline, workshopEnd, workshopDates, formatDay, formatDateRange, effectiveStage, classResumes, WORKSHOP_STAGE, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };

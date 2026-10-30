@@ -277,3 +277,13 @@ test('during a workshop: stage «Воркшоп», class calendar resumes after 
   assert.strictEqual(S.workshopCalendarUrl(r, { ...r.workshops[0], time: 'скоро' }, opts), '');
   assert.strictEqual(S.formatDay(new Date(2026, 10, 23), 'kk-loc'), '23 қарашада');
 });
+
+test('workshopLeaderEmail: the sheet\'s leader name (Latin / Cyrillic, surname or first name) -> email', () => {
+  assert.strictEqual(S.workshopLeaderEmail('Rizakhmet'), 'rizahmet.dauletbay@tumo.center');
+  assert.strictEqual(S.workshopLeaderEmail('Мырзахмет Аружан'), 'aruzhan.myrzakhmet@tumo.center');
+  assert.strictEqual(S.workshopLeaderEmail('Жүнісбек Марғұлан Серікқалиұлы'), 'margulan.zhunisbek@tumo.center');
+  assert.strictEqual(S.workshopLeaderEmail('Dana Akhmetova'), 'akhmetova.dana@tumo.center');
+  assert.strictEqual(S.workshopLeaderEmail('Ертаев'), 'ramazan.yertayev@tumo.center');
+  assert.strictEqual(S.workshopLeaderEmail('Иван Петров'), '');
+  assert.strictEqual(S.workshopLeaderEmail(''), '');
+});

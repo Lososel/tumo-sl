@@ -271,6 +271,16 @@ class SheetToStudentsTest(unittest.TestCase):
         [row_] = sts.read_workshop_rows(workshops)
         self.assertEqual((row_["title"], row_["room"], row_["leader"]), ("3D-моделирование I", "3 этаж, WR 5", "Rizakhmet"))
 
+    def test_group_title_rows_are_skipped(self):
+        # «Workshops 26.10» has one merged title row per group under the header
+        workshops = xlsx({"3d-modeling": [
+            ["ФИО ученика", "Почта TUMO", "Воркшоп", "Кабинет / Зона", "Workshop Leader", "Дни и время"],
+            ["3D-моделирование I, Пн и Чт 10:30–12:30"],
+            ["Иван Петров", None, "3D-моделирование I", "3 этаж, WR 5", "Rizakhmet", "Пн, Чт 10:30–12:30"],
+            ["3D-моделирование I, Пн и Чт 14:30–16:30"],
+            ["Анна Смирнова", None, "3D-моделирование I", "3 этаж, WR 5", "Rizakhmet", "Пн, Чт 14:30–16:30"]]})
+        self.assertEqual([r["name"] for r in sts.read_workshop_rows(workshops)], ["Иван Петров", "Анна Смирнова"])
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path
