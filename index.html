@@ -223,6 +223,8 @@
   .ws-active .ws-title{background:var(--purple-deep);color:#fff;padding:8px 20px;}
   .ws-active .ws-name{font-size:24px;padding:14px 20px 0;}
   .ws-active .facts{padding:0 20px 18px;}
+  .ws-actions{margin-top:14px;}
+  .ws-active .ws-actions{margin:0;padding:0 20px 18px;}
   .ws-active + .facts, .ws-only + .facts{margin-top:22px;}
   .badge.ws-on{background:var(--purple-deep);color:#fff;}
   .ws-only{margin-top:16px;border-radius:16px;padding:14px 20px;background:var(--purple-tint);border:1px solid var(--purple-line);
@@ -683,7 +685,7 @@
             iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
             classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
-      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Лидер воркшопа',
+      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Воркшоп лидер',
            time:'Дни и время', dates:'Даты проведения', until:(d)=>`до ${d}`,
            onlyWorkshop:(d)=>`Сейчас вы посещаете только воркшоп. Самообучение возобновится с ${StudentData.formatDay(d, 'ru').replace(' ', '\u00a0')}.`,
            badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп', badgeOn:'Воркшоп',
@@ -897,8 +899,9 @@
     const end = StudentData.workshopEnd(x);
     return end ? t('ws').until(StudentData.formatDay(end, dateLang())) : '';
   }
-  function workshopBlockHtml(x, label, cls){
+  function workshopBlockHtml(r, x, label, cls){
     const w = t('ws');
+    const google = StudentData.workshopCalendarUrl(r, x, calendarOpts(r));
     const fact = (name, value) => `<div><div class="fact-label">${name}</div><div class="fact-value">${escapeHtml(value) || t('comingSoon')}</div></div>`;
     return `
       <div class="ws-block${cls ? ' ' + cls : ''}">
@@ -910,12 +913,13 @@
           ${fact(w.dates, workshopDatesText(x))}
           ${fact(w.time, x.time)}
         </div>
+        ${google ? `<div class="ws-actions"><a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${t('act').google}</a></div>` : ''}
       </div>`;
   }
   // The running workshop: shown first on the card, highlighted.
   function activeWorkshopHtml(r){
     const tl = StudentData.workshopTimeline(r, new Date(), 14);
-    return tl.current ? workshopBlockHtml(tl.current, t('ws').current, 'ws-active') : '';
+    return tl.current ? workshopBlockHtml(r, tl.current, t('ws').current, 'ws-active') : '';
   }
   // Alerts and the next workshop (below the class facts).
   function workshopSectionHtml(r){
@@ -928,7 +932,7 @@
       alerts.push(w.changed(isoToDate(ch)));
     }
     return alerts.map(a => `<div class="ws-alert" role="alert">⚠️ <span>${a}</span></div>`).join('')
-      + (tl.next ? workshopBlockHtml(tl.next, w.next, tl.nextSoon ? 'ws-upcoming' : '') : '');
+      + (tl.next ? workshopBlockHtml(r, tl.next, w.next, tl.nextSoon ? 'ws-upcoming' : '') : '');
   }
   // the badge in the card's corner: the most urgent workshop news, else «Воркшоп» while one runs
   function workshopBadge(r){
@@ -945,8 +949,9 @@
              classTitle: r.stage === ONBOARDING ? a.classOnb : a.classSL, workshopTitle: a.workshop };
   }
 
-  // The card's one footer button: add to Google Calendar (the running workshop, else the class).
+  // Footer: add the class to Google Calendar. While a workshop runs, the workshop block has the button instead.
   function actionsHtml(r){
+    if(StudentData.workshopTimeline(r, new Date(), 14).current) return '';
     const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
     return google ? `
       <div class="card-actions">

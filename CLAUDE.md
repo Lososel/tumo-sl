@@ -34,7 +34,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   Кабинет / Зона | Workshop Leader (or «Лидер воркшопа» / «Коуч») | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
   student per workshop. Matched by full name (email wins; a name without patronymic only if
   unique). Stored as field 9 `workshops` = [[title, room, leader, time, start, end, changed]].
-  The instructor is the «Лидер воркшопа» / «Воркшоп лидері», never «коуч» (that's the SL coach).
+  The instructor is the «Воркшоп лидер» (KZ «Воркшоп лидері»), never «коуч» (that's the SL coach).
   Never invent workshop data; the source of truth is the TUMO platform.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
@@ -47,7 +47,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).
 - «Сохранить на этом устройстве» keeps ids in localStorage (`tumo-saved-students`).
-- Card footer: one button «Добавить в Google Календарь» (the running workshop until its end, else the
-  class: SL = main day weekly, onboarding = both days). Copy link and save are icon buttons next to
+- «📅 Добавить в Google Календарь»: inside each workshop block (that workshop, weekly until its end) and
+  in the card footer for the class (SL = main day weekly, onboarding = both days; hidden while a
+  workshop runs). Copy link and save are icon buttons next to
   the name. (`buildIcs` stays in `js/student-data.js` but has no button.)
 - PWA manifest and icons live in `js/` so every build that publishes `js/` serves them.

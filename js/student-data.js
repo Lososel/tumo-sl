@@ -190,31 +190,33 @@
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
 
-  // Google Calendar "add event" link (one weekly event): the running workshop until its last day,
-  // otherwise the regular class.
-  function googleCalendarUrl(rec, opts) {
-    const now = opts.now || new Date();
-    const cur = workshopTimeline(rec, now).current;
-    const wsched = cur && parseScheduleText(cur.time);
-    let ev;
-    if (wsched) {
-      const start = isoDay(cur.start), end = workshopEnd(cur);
-      ev = { sched: wsched, from: start && start > now ? start : now, title: `${opts.workshopTitle}: ${cur.title}`,
-             room: cur.room, until: end ? `;UNTIL=${ymd(end)}T185959Z` : '' };
-    } else {
-      const cls = classSchedule(rec);
-      if (!cls) return '';
-      ev = { sched: cls, from: classResumes(rec, now), title: opts.classTitle, room: rec.room, until: '' };
-    }
+  // Google Calendar "add event" link for one weekly event.
+  function calendarLink(rec, ev, opts) {
     const day = ymd(firstDate(ev.sched.days, ev.from));
     const t = s => s.replace(':', '') + '00';
     const q = new URLSearchParams({
       action: 'TEMPLATE', text: ev.title, ctz: 'Asia/Almaty',
       dates: `${day}T${t(ev.sched.start)}/${day}T${t(ev.sched.end)}`,
-      recur: `RRULE:FREQ=WEEKLY;BYDAY=${ev.sched.days.join(',')}${ev.until}`,
+      recur: `RRULE:FREQ=WEEKLY;BYDAY=${ev.sched.days.join(',')}${ev.until || ''}`,
       location: [ev.room, opts.location].filter(Boolean).join(', '), details: rec.n
     });
     return 'https://calendar.google.com/calendar/render?' + q.toString();
+  }
+  // The regular class, from the day it meets again (after a running workshop).
+  function googleCalendarUrl(rec, opts) {
+    const cls = classSchedule(rec);
+    if (!cls) return '';
+    return calendarLink(rec, { sched: cls, from: classResumes(rec, opts.now || new Date()), title: opts.classTitle, room: rec.room }, opts);
+  }
+  // One workshop: its days and time, from its start (or today) until its last day. '' if the
+  // days/time can't be read.
+  function workshopCalendarUrl(rec, w, opts) {
+    const sched = parseScheduleText(w.time);
+    if (!sched) return '';
+    const now = opts.now || new Date();
+    const start = isoDay(w.start), end = workshopEnd(w);
+    return calendarLink(rec, { sched, from: start && start > now ? start : now, title: `${opts.workshopTitle}: ${w.title}`,
+                               room: w.room, until: end ? `;UNTIL=${ymd(end)}T185959Z` : '' }, opts);
   }
 
   const isoDay = iso => {
@@ -525,7 +527,7 @@
     throw lastError;
   }
 
-  return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl,
+  return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl, workshopCalendarUrl,
            workshopTimeline, workshopEnd, workshopDates, formatDay, formatDateRange, effectiveStage, classResumes, WORKSHOP_STAGE, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };

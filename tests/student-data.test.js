@@ -213,8 +213,8 @@ test('buildIcs: weekly class (SL main day / onboarding both days) and current + 
   for (const line of ics.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, line);
   assert.match(S.buildIcs(onb, opts), /RRULE:FREQ=WEEKLY;BYDAY=MO,TH\r\n/);
   assert.strictEqual(S.buildIcs(inactive, opts), '');
-  // Google link: the running workshop until its end; with none, the class
-  let g = new URL(S.googleCalendarUrl(sl, opts));
+  // Google links: a workshop until its end; the class from after the running workshop
+  let g = new URL(S.workshopCalendarUrl(sl, sl.workshops[0], opts));
   assert.strictEqual(g.searchParams.get('text'), 'TUMO: воркшоп: Robotics, 1');
   assert.strictEqual(g.searchParams.get('recur'), 'RRULE:FREQ=WEEKLY;BYDAY=WE;UNTIL=20261031T185959Z');
   assert.strictEqual(g.searchParams.get('ctz'), 'Asia/Almaty');
@@ -267,11 +267,13 @@ test('during a workshop: stage «Воркшоп», class calendar resumes after 
   const opts = { now: during, location: 'TUMO Astana', classTitle: 'TUMO: самообучение', workshopTitle: 'TUMO: воркшоп' };
   assert.match(S.buildIcs(r, opts), /DTSTART;TZID=Asia\/Almaty:20261124T103000\r\n/);   // first Tuesday after 22.11
   assert.match(S.buildIcs(r, opts), /BYDAY=MO,TH;UNTIL=20261122T185959Z/);
-  const g = new URL(S.googleCalendarUrl(r, opts)).searchParams;
+  const g = new URL(S.workshopCalendarUrl(r, r.workshops[0], opts)).searchParams;
   assert.strictEqual(g.get('dates'), '20261102T103000/20261102T123000');                 // next workshop session
   assert.strictEqual(g.get('recur'), 'RRULE:FREQ=WEEKLY;BYDAY=MO,TH;UNTIL=20261122T185959Z');
   assert.strictEqual(g.get('location'), '3 этаж, WR 5, TUMO Astana');
-  // after the workshop the link is the SL class again
+  // the class: from the first Tuesday after the workshop, during it and after it
+  assert.strictEqual(new URL(S.googleCalendarUrl(r, opts)).searchParams.get('dates'), '20261124T103000/20261124T123000');
   assert.strictEqual(new URL(S.googleCalendarUrl(r, { ...opts, now: after })).searchParams.get('dates'), '20261124T103000/20261124T123000');
+  assert.strictEqual(S.workshopCalendarUrl(r, { ...r.workshops[0], time: 'скоро' }, opts), '');
   assert.strictEqual(S.formatDay(new Date(2026, 10, 23), 'kk-loc'), '23 қарашада');
 });
