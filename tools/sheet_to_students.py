@@ -26,6 +26,12 @@ Status of a student (row colour = fill of the «ФИО» cell; .xlsx only, a CSV
     Active: "лист ожидания", "лист ожидания (хочет пн/чт 16:30)", "хочет на 16:30"... — the
     student attends now and only wants another slot.
   Inactive/waitlist rows keep only the name (no schedule, coach or email).
+
+Workshops (optional): a tab named «Воркшопы» / «Workshops…» with columns
+  «ФИО ученика» and/or «Почта TUMO», «Воркшоп», «Кабинет», «Дни и время» (e.g. «Вт, Пт 16:30–18:30»),
+  «Дата изменения». Rows are matched to students by TUMO email, then by name; the card then shows
+  the workshop and a «воркшоп изменён» alert for changes in the last 14 days. No such tab = no
+  workshop on the cards.
   The «Расписание» column is not checked: "(лист ожидания)" there is the slot the family
   first asked for, not the student's current status.
 
@@ -197,6 +203,72 @@ def map_header(row):
     return cols
 
 
+WORKSHOP_TAB_RE = re.compile(r"^\s*(воркшоп|workshop)", re.I)
+WORKSHOP_HEADERS = {
+    "фио": "name", "ученик": "name", "name": "name",
+    "почта tumo": "email", "почта тумо": "email", "email": "email",
+    "воркшоп": "workshop", "название": "workshop", "workshop": "workshop", "направление": "workshop",
+    "кабинет": "room", "зона": "room", "room": "room",
+    "дни и время": "time", "расписание": "time", "время": "time", "schedule": "time", "дни": "time",
+    "дата изменения": "changed", "изменено": "changed", "изменен": "changed", "changed": "changed", "updated": "changed",
+}
+
+
+def read_workshop_rows(raw):
+    """xlsx bytes -> [{name, email, workshop, room, time, changed}] from «Воркшопы» tabs ([] if none)."""
+    if raw[:2] != b"PK":
+        return []
+    import datetime
+    import openpyxl
+
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
+    out = []
+    for ws in wb.worksheets:
+        if not WORKSHOP_TAB_RE.match(ws.title):
+            continue
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        cols = {}
+        for i, cell in enumerate(rows[0]):
+            h = clean_ws(cell).lower()
+            field = next((f for prefix, f in WORKSHOP_HEADERS.items() if h.startswith(prefix)), None)
+            if field and field not in cols:
+                cols[field] = i
+        if "workshop" not in cols or not ({"name", "email"} & set(cols)):
+            continue
+        for r in rows[1:]:
+            get = lambda f: r[cols[f]] if f in cols and cols[f] < len(r) else None  # noqa: E731
+            if not clean_ws(get("workshop")):
+                continue
+            changed = get("changed")
+            if isinstance(changed, (datetime.date, datetime.datetime)):
+                changed = changed.strftime("%Y-%m-%d")
+            else:
+                m = re.search(r"(\d{1,2})[./](\d{1,2})[./](\d{4})", str(changed or ""))
+                changed = f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}" if m else ""
+            out.append({"name": norm(proper_case(fix_mixed_script(clean_ws(get("name"))))),
+                        "email": clean_ws(get("email")).lower(),
+                        "workshop": clean_ws(get("workshop")), "room": clean_ws(get("room")),
+                        "time": clean_ws(get("time")), "changed": changed})
+    return out
+
+
+def attach_workshops(students, workshop_rows):
+    """Fill the workshop fields of active students; returns the rows that matched no student."""
+    by_email = {s[6]: s for s in students if s[6] and not s[8]}
+    by_name = {norm(s[0]): s for s in students if not s[8]}
+    unmatched = []
+    for w in workshop_rows:
+        s = by_email.get(w["email"]) if w["email"] else None
+        s = s or by_name.get(w["name"])
+        if s is None:
+            unmatched.append(w)
+            continue
+        s[9:13] = [w["workshop"], w["room"], w["time"], w["changed"]]
+    return unmatched
+
+
 def stream_of(tab):
     m = STREAM_TAB_RE.match(tab or "")
     return m.group(1) if m else None
@@ -302,7 +374,7 @@ def parse(tables, published=None, stats=None):
                             break
             if status:
                 # Only the name: the card says «свяжитесь с нами», no schedule/coach/email.
-                rec = [name, "", "", "", "", stage, "", "", status]
+                rec = [name, "", "", "", "", stage, "", "", status, "", "", "", ""]
                 by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": False})
                 continue
             if onboarding:
@@ -323,7 +395,7 @@ def parse(tables, published=None, stats=None):
                 continue
             email = clean_ws(get(row, "email")).lower()
             rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")), stage,
-                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), ""]
+                   email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", "", "", "", ""]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})
 
@@ -364,8 +436,14 @@ def main():
     current = load_student_data(out) if out.exists() else []
     stats = {}
     streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
-    students, problems = parse(read_tables(Path(args.source).read_bytes(), streams),
-                               {norm(r[0]): r for r in current}, stats)
+    raw = Path(args.source).read_bytes()
+    students, problems = parse(read_tables(raw, streams), {norm(r[0]): r for r in current}, stats)
+    workshop_rows = read_workshop_rows(raw)
+    unmatched = attach_workshops(students, workshop_rows)
+    if workshop_rows:
+        print(f"Воркшопы: {len(workshop_rows)} строк, найдено учеников: {len(workshop_rows) - len(unmatched)}")
+        for w in unmatched[:20]:
+            problems.append(f"[Воркшопы] ученик не найден: {w['email'] or w['name']} ({w['workshop']})")
     active = [s for s in students if not s[8]]
     onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
     print(f"Учеников: {len(students)} — активных: {len(active)} (самообучение: {len(active) - onboarding}, "

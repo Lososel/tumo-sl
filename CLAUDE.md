@@ -28,3 +28,12 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).
+- Workshops come only from an optional «Воркшопы» tab (columns: ФИО ученика / Почта TUMO,
+  Воркшоп, Кабинет, Дни и время, Дата изменения), matched by TUMO email then name. No tab = no
+  workshop block. Never invent workshop data; the source of truth is the TUMO platform.
+
+## Page features
+- `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).
+- «Сохранить на этом устройстве» keeps ids in localStorage (`tumo-saved-students`).
+- Calendar: `.ics` + Google Calendar link; SL = main day weekly, onboarding = both days.
+- PWA manifest and icons live in `js/` so every build that publishes `js/` serves them.

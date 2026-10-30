@@ -30,7 +30,7 @@ class StudentsJsonTest(unittest.TestCase):
             self.assertEqual(payload["fields"], ss.STUDENT_FIELDS)
             self.assertEqual(
                 ss.load_student_data(path),
-                [["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", ""]],
+                [["Иван Петров", "Вторник", "10:30-12:30", "Almas", "Nazym", "Самообучение", "", "", "", "", "", "", ""]],
             )
 
     def test_updated_is_a_utc_timestamp(self):

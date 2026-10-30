@@ -8,6 +8,11 @@
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="14" fill="%23fff" stroke="%23e6c6ef" stroke-width="2"/><text x="32" y="43" font-family="Arial, sans-serif" font-size="30" font-weight="700" text-anchor="middle" fill="%23b25ec7">T</text></svg>'>
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACM0lEQVR4nOyXTWvUQBjHn5lMkk2zL911s11bBKmIL9XuwVaXnjwIglBPXkS86EHwA/gh/AIFRcSLop/A14MXKd12xR4UEUSobquNSxOyu8lOsuOMYtlWKMTuJhT2ByF5Zgaef57MkOdPYBur89YFwOwaMDglKajjtzrjsAuIhj8HbYYBwRLz0d3Rmcyz7nnUHawtWo/VJDmr5khB1iUgQxL0Ar8ZAG0E4P6kZtvxXxanhy9vEcAYw+ays6QV5Am9qMrQRxqrLm2tt5fzk+nTCKEOFoM/qtYTzZBP9Du5QN+fkDVDLX2v2o9EjNYq9kUlhe9nj+g5iJCNj816q+5e4ZuD3Ujk5EiTC5QsyWGV3CSsw06KDRc1IifPPUkkGQW92u1hBUgEMcLP+UGICZGbQMzsLQGeTcFeae64RjcSMFRQoS8CzPc2VOc+7bjm8OwYHL10APoiIH88DeVbxzbj+dsfft9L18dB2/fnrUUFwhBKgJqWwZjI/DOePZSC1JgG/8PgFAwEDATsbQGzD8qwW2KvAOZ9+xeICZEbc9OARN8eNcInBJQFGGF4K4I4BDAGC5h3hHMtk65AxLhm+ysO4B4eKSefU4e+btQ8FyLC+eZ6vAIvijPDrza94fo7q5LIK1PJ0XD/89DJay54Jl3Il9JnRLzVnFY2Hqopck7JyoZom3vlF8T3FpdXpyZ1gqcj05mrf+fQ9sW1N9Z5RLg9B5jingF6Ys8pE4+LyIc7ouzd878AAAD//2vY5GoAAAAGSURBVAMAJJnKRCtUajUAAAAASUVORK5CYII=">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- "Add to home screen": the manifest is in js/ so every build that publishes js/ serves it. -->
+<link rel="manifest" href="js/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TUMO">
 <title>TUMO Astana — новое расписание SL</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -197,6 +202,27 @@
   .pw-copy:hover{background:#000;}
   .pw-hint{margin:12px 0 0;font-size:14px;color:#475569;}
   @media (max-width:520px){ .pw-code{flex-basis:100%;} }
+  /* ---------- card actions, workshop, saved students ---------- */
+  .card-actions{margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;}
+  .act-btn{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--black);background:#fff;color:var(--black);
+    font:inherit;font-weight:700;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer;text-decoration:none;}
+  .act-btn:hover{background:var(--black);color:#fff;}
+  .act-btn.saved{background:var(--purple-tint);border-color:var(--purple);color:#9b47b0;}
+  .ws-block{margin-top:20px;border:2px solid var(--purple);border-radius:16px;padding:16px 20px;background:var(--purple-tint);}
+  .ws-block .ws-title{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .ws-block .ws-name{font-size:20px;font-weight:900;color:var(--black);margin-top:4px;}
+  .ws-block .facts{margin:12px 0 0;}
+  .ws-alert{margin-top:12px;display:flex;gap:10px;align-items:flex-start;background:#fff7ed;border:2px solid #fb923c;
+    color:#9a3412;border-radius:12px;padding:12px 14px;font-weight:700;font-size:15px;}
+  .badge.ws-changed{background:#fff7ed;color:#c2410c;}
+  .saved-bar{margin:18px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .saved-bar .saved-title{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
+  .saved-chip{display:inline-flex;align-items:center;border:2px solid var(--purple);border-radius:999px;background:#fff;overflow:hidden;}
+  .saved-chip button{border:0;background:none;font:inherit;cursor:pointer;color:var(--black);}
+  .saved-chip .open{font-weight:700;font-size:14px;padding:7px 4px 7px 14px;}
+  .saved-chip .remove{font-size:16px;line-height:1;padding:7px 12px 7px 8px;color:var(--muted);}
+  .install-bar{margin:12px 0 0;}
+  .install-hint{margin:8px 0 0;font-size:14px;color:var(--muted);}
   .updated-at{          /* text-center text-sm text-slate-400, as in the onboarding app */
     margin:0;
     text-align:center;
@@ -484,6 +510,12 @@
       </div>
     </div>
 
+    <div id="savedBar" class="saved-bar" hidden></div>
+    <div id="installBar" class="install-bar" hidden>
+      <button type="button" id="installBtn" class="act-btn" hidden></button>
+      <p id="iosHint" class="install-hint" hidden></p>
+    </div>
+
     <div id="results" class="results"></div>
 
     <div class="faq">
@@ -621,6 +653,14 @@
       tooMany:'Найдено несколько совпадений. Введите имя и фамилию полностью, чтобы уточнить поиск.',
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
       updatedAt:(date)=>`Данные обновлены: ${date}`,
+      // card actions, share links, workshop
+      act:{ ics:'📅 Добавить в календарь', google:'Google Календарь', copy:'🔗 Скопировать ссылку', copied:'✓ Ссылка скопирована',
+            save:'⭐ Сохранить на этом устройстве', saved:'✓ Сохранено на этом устройстве', install:'📲 Установить на телефон',
+            iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
+            savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
+            classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
+      ws:{ title:'Воркшоп', room:'Кабинет', time:'Дни и время', badge:'Воркшоп изменён',
+           changed:(date)=>`Воркшоп изменён ${date} — проверьте название, кабинет и время выше.` },
       // red row / dark purple row in the master sheet
       statusInactive:{ badge:'Неактивен', text:'Если вы хотите продолжить обучение в TUMO, свяжитесь с нами через WhatsApp.' },
       statusWaitlist:{ badge:'Лист ожидания', text:'Сейчас ваш аккаунт приостановлен. Ожидайте обновления информации о вашем месте в TUMO или свяжитесь с нами через WhatsApp.' },
@@ -679,6 +719,13 @@
       tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
       updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
+      act:{ ics:'📅 Күнтізбеге қосу', google:'Google Күнтізбе', copy:'🔗 Сілтемені көшіру', copied:'✓ Сілтеме көшірілді',
+            save:'⭐ Осы құрылғыда сақтау', saved:'✓ Осы құрылғыда сақталды', install:'📲 Телефонға орнату',
+            iosHint:'iPhone-да: «Бөлісу» → «Басты экранға қосу» — сақталған карточка бір рет басқанда ашылады.',
+            savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
+            classSL:'TUMO: өзіндік оқу', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
+      ws:{ title:'Воркшоп', room:'Кабинет', time:'Күндері мен уақыты', badge:'Воркшоп өзгерді',
+           changed:(date)=>`Воркшоп ${date} өзгерді — жоғарыдағы атауын, кабинетін және уақытын тексеріңіз.` },
       statusInactive:{ badge:'Белсенді емес', text:'TUMO-да оқуды жалғастырғыңыз келсе, бізбен WhatsApp арқылы байланысыңыз.' },
       statusWaitlist:{ badge:'Күту тізімі', text:'Қазір аккаунтыңыз уақытша тоқтатылған. TUMO-дағы орныңыз туралы жаңартуды күтіңіз немесе бізбен WhatsApp арқылы байланысыңыз.' },
       statusWaText:(name)=>`Сәлеметсіз бе! TUMO-дағы оқу мәртебесін нақтылағым келеді. Оқушының аты-жөні: ${name}`,
@@ -746,12 +793,12 @@
       dataUpdated = updated;
       dataSignature = signature;
       DATA = records.map(r => Object.assign(r, { _t: StudentData.nameTokens(r.n) }));
-      if(!lastQueryEmpty) runSearch(); // re-render with fresh data
+      rerender(); // fresh data: saved students, shared card or the current search
     } catch (err) {
       console.error('Student data load failed:', err);
       if(dataState !== 'ready'){ // keep showing the last good data if we had any
         dataState = 'error';
-        if(!lastQueryEmpty) runSearch();
+        rerender();
       }
     }
   }
@@ -782,6 +829,7 @@
   // More than 3 matches shows no cards, only a request for the full name (onboarding app rule).
 
   function runSearch(){
+    if(currentId){ currentId = null; history.replaceState(null, '', location.pathname); }
     const q = input.value;
     lastQueryEmpty = !q.trim();
     if(lastQueryEmpty){ results.innerHTML=''; lastRendered=[]; return; }
@@ -800,6 +848,151 @@
     el.textContent = text;
     results.appendChild(el);
   }
+
+  // ---------- workshop block, card actions, share links, saved students ----------
+  const SAVED_KEY = 'tumo-saved-students';
+  function loadSaved(){ try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch { return []; } }
+  function storeSaved(ids){ try { localStorage.setItem(SAVED_KEY, JSON.stringify(ids)); } catch {} }
+  const isoToDate = iso => /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.split('-').reverse().join('.') : '';
+
+  // Workshop (only when the sheet has a «Воркшопы» tab): name, room, days/time and an alert
+  // when it changed in the last 14 days — the thing students miss in their e-mail.
+  function workshopHtml(r){
+    if(!r.ws) return '';
+    const w = t('ws');
+    const changed = StudentData.workshopRecentlyChanged(r, new Date(), 14);
+    return `
+      <div class="ws-block">
+        <div class="ws-title">${w.title}</div>
+        <div class="ws-name">${escapeHtml(r.ws)}</div>
+        <div class="facts">
+          <div><div class="fact-label">${w.room}</div><div class="fact-value">${escapeHtml(r.wsRoom) || t('comingSoon')}</div></div>
+          <div><div class="fact-label">${w.time}</div><div class="fact-value">${escapeHtml(r.wsTime) || t('comingSoon')}</div></div>
+        </div>
+        ${changed ? `<div class="ws-alert" role="alert">⚠️ <span>${w.changed(isoToDate(r.wsChanged))}</span></div>` : ''}
+      </div>`;
+  }
+
+  function calendarOpts(r){
+    const a = t('act');
+    return { now: new Date(), location: 'TUMO Astana, ' + t('contactAddressValue'),
+             classTitle: r.stage === ONBOARDING ? a.classOnb : a.classSL, workshopTitle: a.workshop };
+  }
+
+  // Calendar file, Google Calendar, copy link, save on this device.
+  function actionsHtml(r){
+    const a = t('act');
+    const id = StudentData.studentId(r.n);
+    const saved = loadSaved().includes(id);
+    const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
+    return `
+      <div class="card-actions" data-id="${id}">
+        ${StudentData.classSchedule(r) ? `<button type="button" class="act-btn" data-act="ics">${a.ics}</button>` : ''}
+        ${google ? `<a class="act-btn" href="${escapeHtml(google)}" target="_blank" rel="noopener">${a.google}</a>` : ''}
+        <button type="button" class="act-btn" data-act="copy">${a.copy}</button>
+        <button type="button" class="act-btn${saved ? ' saved' : ''}" data-act="save">${saved ? a.saved : a.save}</button>
+      </div>`;
+  }
+
+  function shareUrl(id){
+    const u = new URL(location.href);
+    u.search = ''; u.hash = '';
+    u.searchParams.set('s', id);
+    return u.toString();
+  }
+  const findById = id => DATA.find(r => StudentData.studentId(r.n) === id);
+
+  results.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-act]');
+    if(!btn) return;
+    const id = btn.closest('.card-actions').dataset.id;
+    const r = findById(id);
+    if(!r) return;
+    const a = t('act');
+    if(btn.dataset.act === 'ics'){
+      const blob = new Blob([StudentData.buildIcs(r, calendarOpts(r))], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'tumo-schedule.ics';
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+    } else if(btn.dataset.act === 'copy'){
+      const url = shareUrl(id);
+      try { await navigator.clipboard.writeText(url); } catch { window.prompt(a.copy, url); return; }
+      btn.textContent = a.copied;
+      setTimeout(() => { btn.textContent = a.copy; }, 2000);
+    } else if(btn.dataset.act === 'save'){
+      const ids = loadSaved();
+      const on = !ids.includes(id);
+      storeSaved(on ? ids.concat(id) : ids.filter(x => x !== id));
+      btn.classList.toggle('saved', on);
+      btn.textContent = on ? a.saved : a.save;
+      renderSaved();
+    }
+  });
+
+  // Saved students: one tap opens the card (also from the home-screen app).
+  function renderSaved(){
+    const bar = document.getElementById('savedBar');
+    const recs = dataState === 'ready' ? loadSaved().map(findById).filter(Boolean) : [];
+    bar.hidden = !recs.length;
+    bar.innerHTML = recs.length ? `<span class="saved-title">${t('act').savedTitle}:</span>` + recs.map(r => {
+      const id = StudentData.studentId(r.n);
+      return `<span class="saved-chip"><button type="button" class="open" data-open="${id}">${escapeHtml(r.n)}</button>`
+           + `<button type="button" class="remove" data-remove="${id}" aria-label="${t('act').remove}">×</button></span>`;
+    }).join('') : '';
+  }
+  document.getElementById('savedBar').addEventListener('click', e => {
+    const open = e.target.closest('[data-open]');
+    const remove = e.target.closest('[data-remove]');
+    if(open) showStudent(open.dataset.open, true);
+    if(remove){
+      storeSaved(loadSaved().filter(x => x !== remove.dataset.remove));
+      renderSaved();
+      if(currentId === remove.dataset.remove) rerender();
+    }
+  });
+
+  // ?s=<id>: open that student's card directly (shared link, bookmark, home-screen app).
+  let currentId = new URLSearchParams(location.search).get('s') || null;
+  function showStudent(id, pushUrl){
+    currentId = id;
+    if(pushUrl) history.replaceState(null, '', shareUrl(id));
+    if(dataState !== 'ready'){ renderStatus(t(dataState === 'error' ? 'dataError' : 'dataLoading')); return; }
+    const r = findById(id);
+    lastRendered = r ? [r] : [];
+    if(r) renderResults([r]); else renderStatus(t('act').linkNotFound);
+  }
+  function rerender(){
+    renderSaved();
+    if(currentId) showStudent(currentId);
+    else if(!lastQueryEmpty) runSearch();
+  }
+
+  // Install button (Android/desktop Chrome) or the iPhone hint (Safari has no install prompt).
+  let installEvent = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installEvent = e;
+    updateInstallBar();
+  });
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  function updateInstallBar(){
+    const btn = document.getElementById('installBtn'), hint = document.getElementById('iosHint');
+    btn.hidden = !installEvent || standalone();
+    btn.textContent = t('act').install;
+    hint.hidden = !(isIos && !standalone() && loadSaved().length);
+    hint.textContent = t('act').iosHint;
+    document.getElementById('installBar').hidden = btn.hidden && hint.hidden;
+  }
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if(!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    installEvent = null;
+    updateInstallBar();
+  });
 
   // Red row (inactive) / dark purple row (waitlist): only the name, the status and how to
   // get in touch. No schedule, coach or email.
@@ -898,7 +1091,7 @@
         return;
       }
       if(onboarding){
-        card.innerHTML = onboardingCardHtml(r, index, email, group);
+        card.innerHTML = onboardingCardHtml(r, index, email, group) + workshopHtml(r) + actionsHtml(r);
         results.appendChild(card);
         if(group && window.QRCode){
           new QRCode(document.getElementById('qr-'+index), { text: group.link, width: 120, height: 120, colorDark: '#1b1c1c', colorLight: '#ffffff' });
@@ -906,7 +1099,9 @@
         return;
       }
       card.innerHTML = `
-        ${onboarding && !noCoach ? '' : `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
+        ${StudentData.workshopRecentlyChanged(r, new Date(), 14)
+          ? `<span class="badge ws-changed">${t('ws').badge}</span>`
+          : `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
         <h3>${escapeHtml(r.n)}</h3>
         <div class="facts">
           <div>
@@ -938,7 +1133,7 @@
           ? `<div class="note warn">${t('noteWarn')}</div>`
           : (onboarding ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
         }
-        <div class="note info">${t('noteWorkshop')}</div>
+        ${r.ws ? workshopHtml(r) : `<div class="note info">${t('noteWorkshop')}</div>`}
         ${group ? `
         <div class="group-block">
           <div class="group-qr" id="qr-${index}"></div>
@@ -949,6 +1144,7 @@
           </div>
         </div>` : ''}
       `;
+      card.insertAdjacentHTML('beforeend', actionsHtml(r));
       results.appendChild(card);
       if(group && window.QRCode){
         new QRCode(document.getElementById('qr-'+index), { text: group.link, width: 120, height: 120, colorDark: '#1b1c1c', colorLight: '#ffffff' });
@@ -1022,7 +1218,8 @@
     renderFaq();
     updateWaLink();
     renderContactList();
-    if(!lastQueryEmpty) runSearch();
+    updateInstallBar();
+    rerender();
   }
 
   searchBtn.addEventListener('click', runSearch);

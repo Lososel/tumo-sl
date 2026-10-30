@@ -75,6 +75,135 @@
       word => (COACH_KNOWN[word.toLowerCase()] || {})[loc] || transliterate(word)));
   }
 
+  // ---------- share links, calendar ----------
+
+  // Stable short id of a student for share links (?s=…): FNV-1a of the folded name, so it
+  // survives re-syncs and spelling variants (Kazakh/Russian letters, case, extra spaces).
+  function studentId(name) {
+    const key = words(name).map(fold).join(' ');
+    let h = 0x811c9dc5;
+    for (const byte of new TextEncoder().encode(key)) {
+      h ^= byte;
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(36).padStart(7, '0');
+  }
+
+  const DAY_CODES = { 'понедельник': 'MO', 'вторник': 'TU', 'среда': 'WE', 'четверг': 'TH', 'пятница': 'FR', 'суббота': 'SA', 'воскресенье': 'SU' };
+  const DAY_ALIASES = [ // prefixes, Russian / Kazakh / short forms
+    [/^(понед|пн|дүйс|дс)/, 'MO'], [/^(вторн|вт|сейс|сс)/, 'TU'], [/^(сред|ср|сәрс)/, 'WE'],
+    [/^(четв|чт|бейс|бс)/, 'TH'], [/^(пятн|пт|жұма|жм)/, 'FR'], [/^(субб|сб|сенб)/, 'SA']];
+  const PAIRS = { MO: ['MO', 'TH'], TH: ['MO', 'TH'], TU: ['TU', 'FR'], FR: ['TU', 'FR'] };
+
+  // "Вторник, Пятница : 16:30–18:30", "Вт/Пт 16:30-18:30", "ср 15.00" -> {days:['TU','FR'], start:'16:30', end:'18:30'}
+  function parseScheduleText(text) {
+    const s = String(text || '').toLowerCase();
+    const times = s.match(/\d{1,2}[:.]\d{2}/g) || [];
+    const days = [];
+    for (const w of s.split(/[^а-яёәғқңөұүһі]+/)) {
+      const hit = DAY_ALIASES.find(([re]) => w && re.test(w));
+      if (hit && !days.includes(hit[1])) days.push(hit[1]);
+    }
+    if (!days.length || !times.length) return null;
+    const norm = t => t.replace('.', ':').padStart(5, '0');
+    const start = norm(times[0]);
+    const end = times[1] ? norm(times[1]) : `${String(+start.slice(0, 2) + 2).padStart(2, '0')}${start.slice(2)}`;
+    return { days, start, end };
+  }
+
+  // The regular class: self-learning = the main SL day once a week; onboarding = both days of the pair.
+  function classSchedule(rec) {
+    const code = DAY_CODES[String(rec.d || '').toLowerCase()];
+    const m = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec(rec.t || '');
+    if (!code || !m) return null;
+    return { days: rec.stage === 'Онбординг' ? PAIRS[code] || [code] : [code], start: m[1], end: m[2] };
+  }
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const ymd = d => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+  const CODE_INDEX = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+
+  // First date on/after `now` that falls on one of the schedule's days.
+  function firstDate(days, now) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    for (let i = 0; i < 7; i++, d.setDate(d.getDate() + 1)) {
+      if (days.some(c => CODE_INDEX[c] === d.getDay())) return new Date(d);
+    }
+    return d;
+  }
+
+  const icsText = s => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+
+  // RFC 5545 line folding at 75 octets (Cyrillic is 2 bytes per letter in UTF-8).
+  function foldLine(line) {
+    const enc = new TextEncoder();
+    const out = [];
+    let cur = '', size = 0;
+    for (const ch of line) {
+      const n = enc.encode(ch).length;
+      if (size + n > (out.length ? 74 : 75)) {
+        // don't separate an escape ("\\,") from its backslash: some calendar apps choke on it
+        const carry = cur.endsWith('\\') ? '\\' : '';
+        out.push(carry ? cur.slice(0, -1) : cur); cur = carry; size = carry.length;
+      }
+      cur += ch; size += n;
+    }
+    out.push(cur);
+    return out.join('\r\n ');
+  }
+
+  // .ics with weekly recurring events (Asia/Almaty, 1 h reminder): the regular class and, if
+  // known and parseable, the workshop. opts: {now, location, classTitle, workshopTitle}
+  function buildIcs(rec, opts) {
+    const now = opts.now || new Date();
+    const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const id = studentId(rec.n);
+    const events = [];
+    const add = (uid, title, sched, location) => {
+      const day = firstDate(sched.days, now);
+      const t = s => s.replace(':', '') + '00';
+      events.push(['BEGIN:VEVENT', `UID:${uid}-${id}@tumo-astana-sl`, `DTSTAMP:${stamp}`,
+        `DTSTART;TZID=Asia/Almaty:${ymd(day)}T${t(sched.start)}`, `DTEND;TZID=Asia/Almaty:${ymd(day)}T${t(sched.end)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${sched.days.join(',')}`, `SUMMARY:${icsText(title)}`,
+        `LOCATION:${icsText(location)}`, `DESCRIPTION:${icsText(rec.n)}`,
+        'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(title)}`, 'TRIGGER:-PT1H', 'END:VALARM',
+        'END:VEVENT']);
+    };
+    const cls = classSchedule(rec);
+    if (cls) add('class', opts.classTitle, cls, [rec.room, opts.location].filter(Boolean).join(', '));
+    const ws = rec.ws && parseScheduleText(rec.wsTime);
+    if (ws) add('workshop', `${opts.workshopTitle}: ${rec.ws}`, ws, [rec.wsRoom, opts.location].filter(Boolean).join(', '));
+    if (!events.length) return '';
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TUMO Astana//Schedule//RU', 'CALSCALE:GREGORIAN',
+      'BEGIN:VTIMEZONE', 'TZID:Asia/Almaty', 'BEGIN:STANDARD', 'DTSTART:19700101T000000',
+      'TZOFFSETFROM:+0500', 'TZOFFSETTO:+0500', 'TZNAME:+05', 'END:STANDARD', 'END:VTIMEZONE']
+      .concat(...events, ['END:VCALENDAR']);
+    return lines.map(foldLine).join('\r\n') + '\r\n';
+  }
+
+  // Google Calendar "add event" link for the regular class (weekly).
+  function googleCalendarUrl(rec, opts) {
+    const cls = classSchedule(rec);
+    if (!cls) return '';
+    const day = ymd(firstDate(cls.days, opts.now || new Date()));
+    const t = s => s.replace(':', '') + '00';
+    const q = new URLSearchParams({
+      action: 'TEMPLATE', text: opts.classTitle, ctz: 'Asia/Almaty',
+      dates: `${day}T${t(cls.start)}/${day}T${t(cls.end)}`,
+      recur: `RRULE:FREQ=WEEKLY;BYDAY=${cls.days.join(',')}`,
+      location: [rec.room, opts.location].filter(Boolean).join(', '), details: rec.n
+    });
+    return 'https://calendar.google.com/calendar/render?' + q.toString();
+  }
+
+  // Workshop changed within the last `days` days (default 14)?
+  function workshopRecentlyChanged(rec, now, days) {
+    if (!rec.ws || !/^\d{4}-\d{2}-\d{2}$/.test(rec.wsChanged || '')) return false;
+    const [y, m, d] = rec.wsChanged.split('-').map(Number);
+    const age = ((now || new Date()) - new Date(y, m - 1, d)) / 86400000;
+    return age >= 0 && age <= (days || 14);
+  }
+
   // ---------- search ----------
   // Kazakh letters fold to their closest Russian letter (as in the onboarding app), plus ё/й/э,
   // so either keyboard layout finds the name: "нуртас" finds "Нұртас", "Әлихан" finds "Алихан".
@@ -175,13 +304,18 @@
       stage: cleanText(o.stage) || DEFAULT_STAGE,
       email: cleanText(o.email).toLowerCase(),
       room: cleanText(o.room),
-      status: cleanText(o.status).toLowerCase() // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
+      status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
+      // Workshop (from a «Воркшопы» tab of the master sheet, when there is one)
+      ws: cleanText(o.workshop), wsRoom: cleanText(o.workshopRoom), wsTime: cleanText(o.workshopTime),
+      wsChanged: cleanText(o.workshopChanged) // ISO date of the last change, '' if unknown
     };
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status,
+  //                  workshop, workshopRoom, workshopTime, workshopChanged]
   function fromRow(r) {
-    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7], status: r[8] });
+    return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7], status: r[8],
+                        workshop: r[9], workshopRoom: r[10], workshopTime: r[11], workshopChanged: r[12] });
   }
 
   const HEADER_ALIASES = {
@@ -290,7 +424,8 @@
     throw lastError;
   }
 
-  return { properCase, coachName, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
+  return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl,
+           workshopRecentlyChanged, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });

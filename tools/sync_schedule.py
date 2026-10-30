@@ -25,7 +25,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INDEX_HTML = REPO_ROOT / "index.html"
 STUDENTS_JSON = REPO_ROOT / "data" / "students.json"
 # status: "" (active), "inactive" (red row) or "waitlist" (dark purple row); see sheet_to_students.py
-STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status"]
+# workshop*: from an optional «Воркшопы» tab (see sheet_to_students.py), empty when unknown
+STUDENT_FIELDS = ["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status",
+                  "workshop", "workshopRoom", "workshopTime", "workshopChanged"]
 REPORTS_DIR = REPO_ROOT / "reports"
 
 DAYS_OK = ["Понедельник", "Вторник", "Четверг", "Пятница"]

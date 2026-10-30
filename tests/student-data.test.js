@@ -28,7 +28,8 @@ test('fromJson accepts positional rows and title-cases names', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Шошаев Алдияр', d: 'Понедельник', t: '10:30-12:30', c: 'Gulnaz', ex: 'Nazym',
-    stage: 'Самообучение', email: '', room: '', status: ''
+    stage: 'Самообучение', email: '', room: '', status: '',
+    ws: '', wsRoom: '', wsTime: '', wsChanged: ''
   });
 });
 
@@ -40,7 +41,8 @@ test('fromCsv maps Google Sheets headers, quotes and email column', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Түлеу Нұрай Азаматқызы', d: 'Четверг', t: '14:30-16:30', c: 'Almas', ex: 'Gulim, Elmira',
-    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: '', status: ''
+    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: '', status: '',
+    ws: '', wsRoom: '', wsTime: '', wsChanged: ''
   });
 });
 
@@ -172,4 +174,52 @@ test('status (inactive / waitlist) is read from the 9th column', () => {
     ['Аскерұлы Есбер', 'Понедельник', '10:30-12:30', 'Gulnaz', 'Gulnaz', 'Самообучение', 'a@tumo.world']] });
   assert.deepStrictEqual(recs.map(r => r.status), ['inactive', 'waitlist', '']);
   assert.strictEqual(S.searchStudents(recs, 'шаймерденова айша').results[0].status, 'inactive');
+});
+
+test('studentId is stable across spelling variants and differs between students', () => {
+  assert.strictEqual(S.studentId('Аскерұлы Есбер'), S.studentId('  АСКЕРУЛЫ   есбер '));
+  assert.notStrictEqual(S.studentId('Аскерұлы Есбер'), S.studentId('Аскерұлы Ерлан'));
+  assert.match(S.studentId('Аскерұлы Есбер'), /^[0-9a-z]{7}$/);
+  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'students.json'), 'utf8')).students;
+  const ids = new Set(raw.map(r => S.studentId(r[0])));
+  const names = new Set(raw.map(r => r[0]));
+  assert.strictEqual(ids.size, names.size, 'no id collisions in the real data');
+});
+
+test('parseScheduleText reads RU/KZ day names, abbreviations and times', () => {
+  assert.deepStrictEqual(S.parseScheduleText('Вторник, Пятница : 16:30–18:30'), { days: ['TU', 'FR'], start: '16:30', end: '18:30' });
+  assert.deepStrictEqual(S.parseScheduleText('Вт/Пт 16:30-18:30'), { days: ['TU', 'FR'], start: '16:30', end: '18:30' });
+  assert.deepStrictEqual(S.parseScheduleText('ср 15.00'), { days: ['WE'], start: '15:00', end: '17:00' });
+  assert.deepStrictEqual(S.parseScheduleText('Дүйсенбі, Бейсенбі 10:30'), { days: ['MO', 'TH'], start: '10:30', end: '12:30' });
+  assert.strictEqual(S.parseScheduleText('скоро'), null);
+});
+
+test('buildIcs: weekly SL class on the main day, onboarding on both days, workshop when known', () => {
+  const [sl, onb, inactive] = S.fromJson({ students: [
+    ['Аскерұлы Есбер', 'Понедельник', '10:30-12:30', 'Gulnaz', 'Gulnaz', 'Самообучение', '', '', '', 'Game Dev, 2', '3 этаж', 'Вт, Пт 16:30–18:30', '2026-10-28'],
+    ['Кумарбеков Диар', 'Понедельник', '10:30-12:30', 'Ayaulym', '', 'Онбординг', 'd@tumo.world', '3 этаж, 7 WR', ''],
+    ['Шаймерденова Айша', '', '', '', '', 'Самообучение', '', '', 'inactive']] });
+  const opts = { now: new Date(2026, 9, 30, 9), location: 'TUMO Astana', classTitle: 'TUMO: самообучение', workshopTitle: 'TUMO: воркшоп' };
+  const ics = S.buildIcs(sl, opts);
+  assert.match(ics, /^BEGIN:VCALENDAR\r\n/);
+  assert.match(ics, /DTSTART;TZID=Asia\/Almaty:20261102T103000\r\n/);   // next Monday
+  assert.match(ics, /RRULE:FREQ=WEEKLY;BYDAY=MO\r\n/);
+  assert.match(ics, /SUMMARY:TUMO: воркшоп: Game Dev\\, 2\r\n/);       // comma escaped
+  assert.match(ics, /RRULE:FREQ=WEEKLY;BYDAY=TU,FR\r\n/);
+  assert.match(ics, /TRIGGER:-PT1H/);
+  for (const line of ics.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, line);
+  assert.match(S.buildIcs(onb, opts), /RRULE:FREQ=WEEKLY;BYDAY=MO,TH\r\n/);
+  assert.strictEqual(S.buildIcs(inactive, opts), '');
+  const g = new URL(S.googleCalendarUrl(sl, opts));
+  assert.strictEqual(g.searchParams.get('recur'), 'RRULE:FREQ=WEEKLY;BYDAY=MO');
+  assert.strictEqual(g.searchParams.get('dates'), '20261102T103000/20261102T123000');
+  assert.strictEqual(g.searchParams.get('ctz'), 'Asia/Almaty');
+});
+
+test('workshopRecentlyChanged: within 14 days only, and only with a workshop', () => {
+  const rec = { ws: 'Game Dev', wsChanged: '2026-10-28' };
+  assert.strictEqual(S.workshopRecentlyChanged(rec, new Date(2026, 9, 30)), true);
+  assert.strictEqual(S.workshopRecentlyChanged(rec, new Date(2026, 10, 20)), false);
+  assert.strictEqual(S.workshopRecentlyChanged({ ws: '', wsChanged: '2026-10-28' }, new Date(2026, 9, 30)), false);
+  assert.strictEqual(S.workshopRecentlyChanged({ ws: 'X', wsChanged: '' }, new Date(2026, 9, 30)), false);
 });
