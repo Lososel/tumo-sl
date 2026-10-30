@@ -51,6 +51,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   | Programming | Ахметова Дана Саятовна | akhmetova.dana@tumo.center |
   A workshop row's «Workshop Leader» should be the leader of that workshop; if it's empty, ask
   rather than guess.
+  The workshop block shows the leader's email (`WORKSHOP_LEADERS` in `js/student-data.js`, matched by
+  surname or first name, Cyrillic or Latin); add a new leader there.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last

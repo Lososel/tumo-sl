@@ -684,7 +684,7 @@
             iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
             classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
-      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Воркшоп лидер',
+      ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Воркшоп лидер', leaderEmail:'Email воркшоп лидера',
            time:'Дни и время', dates:'Даты проведения', until:(d)=>`до ${d}`,
            onlyWorkshop:(d)=>`Сейчас вы посещаете только воркшоп. Самообучение возобновится с ${StudentData.formatDay(d, 'ru').replace(' ', '\u00a0')}.`,
            badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп', badgeOn:'Воркшоп',
@@ -751,7 +751,7 @@
             iosHint:'iPhone-да: «Бөлісу» → «Басты экранға қосу» — сақталған карточка бір рет басқанда ашылады.',
             savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
             classSL:'TUMO: өзіндік оқу', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
-      ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', leader:'Воркшоп лидері',
+      ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', leader:'Воркшоп лидері', leaderEmail:'Воркшоп лидерінің email-і',
            time:'Күндері мен уақыты', dates:'Өткізу күндері', until:(d)=>`${d} дейін`,
            onlyWorkshop:(d)=>`Қазір сіз тек воркшопқа қатысасыз. Өзіндік оқу ${StudentData.formatDay(d, 'kk-loc').replace(' ', '\u00a0')} қайта басталады.`,
            badge:'Воркшоп өзгерді', badgeSoon:'Жақында жаңа воркшоп', badgeOn:'Воркшоп',
@@ -899,6 +899,7 @@
   function workshopBlockHtml(r, x, label, cls){
     const w = t('ws');
     const google = StudentData.workshopCalendarUrl(r, x, calendarOpts(r));
+    const leaderEmail = StudentData.workshopLeaderEmail(x.leader);
     const fact = (name, value) => `<div><div class="fact-label">${name}</div><div class="fact-value">${escapeHtml(value) || t('comingSoon')}</div></div>`;
     return `
       <div class="ws-block${cls ? ' ' + cls : ''}">
@@ -906,6 +907,7 @@
         <div class="ws-name">${escapeHtml(x.title)}</div>
         <div class="facts">
           ${fact(w.leader, displayCoachName(x.leader))}
+          <div><div class="fact-label">${w.leaderEmail}</div><div class="fact-value">${leaderEmail ? `<a href="mailto:${leaderEmail}">${leaderEmail}</a>` : t('comingSoon')}</div></div>
           ${fact(w.room, x.room)}
           ${fact(w.dates, workshopDatesText(x))}
           ${fact(w.time, x.time)}
