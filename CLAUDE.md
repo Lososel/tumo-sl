@@ -41,11 +41,13 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last
   session, e.g. «26 октября – 19 ноября» for Пн/Чт 26.10–22.11.
 - While a workshop runs (computed in the browser for today): it is the first, highlighted block;
-  «Этап обучения» = «Воркшоп»; the SL schedule and main day are crossed out with «Приостановлено на
-  время воркшопа»; the calendar's SL class starts the day after the workshop.
+  «Этап обучения» = «Воркшоп»; the SL schedule and main day are hidden and one banner says «Сейчас вы
+  посещаете только воркшоп. Самообучение возобновится с <date>.»; no «Коуч остался прежним» note.
 
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).
 - «Сохранить на этом устройстве» keeps ids in localStorage (`tumo-saved-students`).
-- Calendar: `.ics` + Google Calendar link; SL = main day weekly, onboarding = both days.
+- Card footer: one button «Добавить в Google Календарь» (the running workshop until its end, else the
+  class: SL = main day weekly, onboarding = both days). Copy link and save are icon buttons next to
+  the name. (`buildIcs` stays in `js/student-data.js` but has no button.)
 - PWA manifest and icons live in `js/` so every build that publishes `js/` serves them.

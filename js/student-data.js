@@ -190,17 +190,29 @@
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
 
-  // Google Calendar "add event" link for the regular class (weekly).
+  // Google Calendar "add event" link (one weekly event): the running workshop until its last day,
+  // otherwise the regular class.
   function googleCalendarUrl(rec, opts) {
-    const cls = classSchedule(rec);
-    if (!cls) return '';
-    const day = ymd(firstDate(cls.days, classResumes(rec, opts.now || new Date())));
+    const now = opts.now || new Date();
+    const cur = workshopTimeline(rec, now).current;
+    const wsched = cur && parseScheduleText(cur.time);
+    let ev;
+    if (wsched) {
+      const start = isoDay(cur.start), end = workshopEnd(cur);
+      ev = { sched: wsched, from: start && start > now ? start : now, title: `${opts.workshopTitle}: ${cur.title}`,
+             room: cur.room, until: end ? `;UNTIL=${ymd(end)}T185959Z` : '' };
+    } else {
+      const cls = classSchedule(rec);
+      if (!cls) return '';
+      ev = { sched: cls, from: classResumes(rec, now), title: opts.classTitle, room: rec.room, until: '' };
+    }
+    const day = ymd(firstDate(ev.sched.days, ev.from));
     const t = s => s.replace(':', '') + '00';
     const q = new URLSearchParams({
-      action: 'TEMPLATE', text: opts.classTitle, ctz: 'Asia/Almaty',
-      dates: `${day}T${t(cls.start)}/${day}T${t(cls.end)}`,
-      recur: `RRULE:FREQ=WEEKLY;BYDAY=${cls.days.join(',')}`,
-      location: [rec.room, opts.location].filter(Boolean).join(', '), details: rec.n
+      action: 'TEMPLATE', text: ev.title, ctz: 'Asia/Almaty',
+      dates: `${day}T${t(ev.sched.start)}/${day}T${t(ev.sched.end)}`,
+      recur: `RRULE:FREQ=WEEKLY;BYDAY=${ev.sched.days.join(',')}${ev.until}`,
+      location: [ev.room, opts.location].filter(Boolean).join(', '), details: rec.n
     });
     return 'https://calendar.google.com/calendar/render?' + q.toString();
   }
@@ -233,9 +245,12 @@
 
   const MONTHS = {
     ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
-    kk: ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан']
+    kk: ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'],
+    // Kazakh locative, «23 қарашада» = "on 23 November"
+    'kk-loc': ['қаңтарда', 'ақпанда', 'наурызда', 'сәуірде', 'мамырда', 'маусымда', 'шілдеде', 'тамызда', 'қыркүйекте', 'қазанда',
+               'қарашада', 'желтоқсанда']
   };
-  // "26 октября" (lang 'ru' | 'kk': "26 қазан")
+  // "26 октября" (lang 'ru' | 'kk': "26 қазан" | 'kk-loc': "26 қазанда")
   function formatDay(d, lang, withYear) {
     return `${d.getDate()} ${(MONTHS[lang] || MONTHS.ru)[d.getMonth()]}${withYear ? ' ' + d.getFullYear() : ''}`;
   }

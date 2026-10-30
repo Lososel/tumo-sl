@@ -223,10 +223,20 @@
   .ws-active .ws-title{background:var(--purple-deep);color:#fff;padding:8px 20px;}
   .ws-active .ws-name{font-size:24px;padding:14px 20px 0;}
   .ws-active .facts{padding:0 20px 18px;}
-  .ws-active + .facts{margin-top:22px;}
+  .ws-active + .facts, .ws-only + .facts{margin-top:22px;}
   .badge.ws-on{background:var(--purple-deep);color:#fff;}
-  .paused-old{text-decoration:line-through;color:var(--muted);}
-  .paused-tag{display:block;margin-top:4px;font-size:13px;font-weight:700;color:#c2410c;}
+  .ws-only{margin-top:16px;border-radius:16px;padding:14px 20px;background:var(--purple-tint);border:1px solid var(--purple-line);
+    color:var(--black);font-weight:700;font-size:15.2px;}
+  /* copy link / save: small icon buttons next to the name */
+  .head-actions{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px;}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:999px;
+    background:transparent;color:var(--muted);cursor:pointer;padding:0;}
+  .icon-btn:hover,.icon-btn:focus-visible{background:var(--purple-tint);color:var(--purple-deep);}
+  .icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .icon-btn.saved{color:var(--purple-deep);}
+  .icon-btn.saved svg{fill:currentColor;}
+  .act-btn.primary{background:var(--purple-deep);border-color:var(--purple-deep);color:#fff;}
+  .act-btn.primary:hover{background:#9b47b0;border-color:#9b47b0;}
   .saved-bar{margin:18px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   .saved-bar .saved-title{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
   .saved-chip{display:inline-flex;align-items:center;border:2px solid var(--purple);border-radius:999px;background:#fff;overflow:hidden;}
@@ -668,14 +678,14 @@
       tooShort:'Введите имя и фамилию учащегося — каждое слово не короче 3 букв.',
       updatedAt:(date)=>`Данные обновлены: ${date}`,
       // card actions, share links, workshop
-      act:{ ics:'📅 Добавить в календарь', google:'Google Календарь', copy:'🔗 Скопировать ссылку', copied:'✓ Ссылка скопирована',
-            save:'⭐ Сохранить на этом устройстве', saved:'✓ Сохранено на этом устройстве', install:'📲 Установить на телефон',
+      act:{ google:'📅 Добавить в Google Календарь', copy:'Скопировать ссылку', copied:'Ссылка скопирована',
+            save:'Сохранить на этом устройстве', saved:'Сохранено на этом устройстве', install:'📲 Установить на телефон',
             iosHint:'На iPhone: «Поделиться» → «На экран „Домой“» — сохранённая карточка будет открываться в одно касание.',
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
             classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
       ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Лидер воркшопа',
            time:'Дни и время', dates:'Даты проведения', until:(d)=>`до ${d}`,
-           paused:'Приостановлено на время воркшопа', resumes:(date)=>`Самообучение продолжится с ${date}`,
+           onlyWorkshop:(d)=>`Сейчас вы посещаете только воркшоп. Самообучение возобновится с ${StudentData.formatDay(d, 'ru').replace(' ', '\u00a0')}.`,
            badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп', badgeOn:'Воркшоп',
            changed:(date)=>`Воркшоп изменён ${date} — проверьте название, кабинет и время.`,
            soon:(date, title)=>`С ${date} новый воркшоп: «${title}». Проверьте кабинет и время ниже.` },
@@ -737,14 +747,14 @@
       tooMany:'Бірнеше сәйкестік табылды. Іздеуді нақтылау үшін аты мен тегін толық енгізіңіз.',
       tooShort:'Оқушының аты мен тегін енгізіңіз — әр сөз кемінде 3 әріптен тұруы керек.',
       updatedAt:(date)=>`Деректер жаңартылды: ${date}`,
-      act:{ ics:'📅 Күнтізбеге қосу', google:'Google Күнтізбе', copy:'🔗 Сілтемені көшіру', copied:'✓ Сілтеме көшірілді',
-            save:'⭐ Осы құрылғыда сақтау', saved:'✓ Осы құрылғыда сақталды', install:'📲 Телефонға орнату',
+      act:{ google:'📅 Google Күнтізбеге қосу', copy:'Сілтемені көшіру', copied:'Сілтеме көшірілді',
+            save:'Осы құрылғыда сақтау', saved:'Осы құрылғыда сақталды', install:'📲 Телефонға орнату',
             iosHint:'iPhone-да: «Бөлісу» → «Басты экранға қосу» — сақталған карточка бір рет басқанда ашылады.',
             savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
             classSL:'TUMO: өзіндік оқу', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
       ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', leader:'Воркшоп лидері',
            time:'Күндері мен уақыты', dates:'Өткізу күндері', until:(d)=>`${d} дейін`,
-           paused:'Воркшоп кезінде тоқтатылған', resumes:(date)=>`Өзіндік оқу ${date} күні қайта басталады`,
+           onlyWorkshop:(d)=>`Қазір сіз тек воркшопқа қатысасыз. Өзіндік оқу ${StudentData.formatDay(d, 'kk-loc').replace(' ', '\u00a0')} қайта басталады.`,
            badge:'Воркшоп өзгерді', badgeSoon:'Жақында жаңа воркшоп', badgeOn:'Воркшоп',
            changed:(date)=>`Воркшоп ${date} өзгерді — атауын, кабинетін және уақытын тексеріңіз.`,
            soon:(date, title)=>`${date} бастап жаңа воркшоп: «${title}». Төмендегі кабинет пен уақытты тексеріңіз.` },
@@ -928,10 +938,6 @@
     if(tl.current) return `<span class="badge ws-on">${t('ws').badgeOn}</span>`;
     return '';
   }
-  // A class fact while a workshop runs: the usual value crossed out + «Приостановлено на время воркшопа».
-  function pausedFact(value, inWorkshop){
-    return inWorkshop ? `<span class="paused-old">${value}</span><span class="paused-tag">${t('ws').paused}</span>` : value;
-  }
 
   function calendarOpts(r){
     const a = t('act');
@@ -939,19 +945,27 @@
              classTitle: r.stage === ONBOARDING ? a.classOnb : a.classSL, workshopTitle: a.workshop };
   }
 
-  // Calendar file, Google Calendar, copy link, save on this device.
+  // The card's one footer button: add to Google Calendar (the running workshop, else the class).
   function actionsHtml(r){
+    const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
+    return google ? `
+      <div class="card-actions">
+        <a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${t('act').google}</a>
+      </div>` : '';
+  }
+  // Copy link and save-on-this-device as small icon buttons next to the student's name.
+  const ICON_LINK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+  const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
+  function headActionsHtml(r){
     const a = t('act');
     const id = StudentData.studentId(r.n);
     const saved = loadSaved().includes(id);
-    const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
-    return `
-      <div class="card-actions" data-id="${id}">
-        ${StudentData.classSchedule(r) ? `<button type="button" class="act-btn" data-act="ics">${a.ics}</button>` : ''}
-        ${google ? `<a class="act-btn" href="${escapeHtml(google)}" target="_blank" rel="noopener">${a.google}</a>` : ''}
-        <button type="button" class="act-btn" data-act="copy">${a.copy}</button>
-        <button type="button" class="act-btn${saved ? ' saved' : ''}" data-act="save">${saved ? a.saved : a.save}</button>
-      </div>`;
+    const save = saved ? a.saved : a.save;
+    return `<span class="head-actions" data-id="${id}">
+        <button type="button" class="icon-btn" data-act="copy" title="${a.copy}" aria-label="${a.copy}">${ICON_LINK}</button>
+        <button type="button" class="icon-btn${saved ? ' saved' : ''}" data-act="save" title="${save}" aria-label="${save}" aria-pressed="${saved}">${ICON_STAR}</button>
+      </span>`;
   }
 
   function shareUrl(id){
@@ -965,28 +979,23 @@
   results.addEventListener('click', async e => {
     const btn = e.target.closest('[data-act]');
     if(!btn) return;
-    const id = btn.closest('.card-actions').dataset.id;
+    const id = btn.closest('[data-id]').dataset.id;
     const r = findById(id);
     if(!r) return;
     const a = t('act');
-    if(btn.dataset.act === 'ics'){
-      const blob = new Blob([StudentData.buildIcs(r, calendarOpts(r))], { type: 'text/calendar;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'tumo-schedule.ics';
-      document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-    } else if(btn.dataset.act === 'copy'){
+    const label = text => { btn.title = text; btn.setAttribute('aria-label', text); };
+    if(btn.dataset.act === 'copy'){
       const url = shareUrl(id);
       try { await navigator.clipboard.writeText(url); } catch { window.prompt(a.copy, url); return; }
-      btn.textContent = a.copied;
-      setTimeout(() => { btn.textContent = a.copy; }, 2000);
+      btn.innerHTML = ICON_CHECK; label(a.copied);
+      setTimeout(() => { btn.innerHTML = ICON_LINK; label(a.copy); }, 2000);
     } else if(btn.dataset.act === 'save'){
       const ids = loadSaved();
       const on = !ids.includes(id);
       storeSaved(on ? ids.concat(id) : ids.filter(x => x !== id));
       btn.classList.toggle('saved', on);
-      btn.textContent = on ? a.saved : a.save;
+      btn.setAttribute('aria-pressed', on);
+      label(on ? a.saved : a.save);
       renderSaved();
     }
   });
@@ -1078,7 +1087,7 @@
     const mail = v => v ? `<a href="mailto:${escapeHtml(v)}">${escapeHtml(v)}</a>` : '';
     return `
       <span class="badge onboarding">${o.badge}</span>
-      <h3>${escapeHtml(r.n)}</h3>
+      <h3>${escapeHtml(r.n)}${headActionsHtml(r)}</h3>
       <div class="facts">
         ${field(o.schedule, escapeHtml(schedule))}
         ${field(o.room, escapeHtml(r.room))}
@@ -1165,21 +1174,21 @@
       // during a workshop the student doesn't attend self-learning: stage «Воркшоп», SL schedule paused
       const now = new Date();
       const inWorkshop = !!StudentData.workshopTimeline(r, now, 14).current;
-      const resumes = inWorkshop ? StudentData.formatDay(StudentData.classResumes(r, now), dateLang()) : '';
       card.innerHTML = `
         ${workshopBadge(r)
           || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
-        <h3>${escapeHtml(r.n)}</h3>
+        <h3>${escapeHtml(r.n)}${headActionsHtml(r)}</h3>
         ${activeWorkshopHtml(r)}
+        ${inWorkshop ? `<div class="ws-only" role="status">${t('ws').onlyWorkshop(StudentData.classResumes(r, now))}</div>` : ''}
         <div class="facts">
-          <div>
+          ${inWorkshop ? '' : `<div>
             <div class="fact-label">${t('factSchedule')}</div>
-            <div class="fact-value">${pausedFact(`${scheduleDays(r.d)} ${r.t}`, inWorkshop)}</div>
+            <div class="fact-value">${scheduleDays(r.d)} ${r.t}</div>
           </div>
           <div>
             <div class="fact-label">${t('factMainDay')}</div>
-            <div class="fact-value">${pausedFact(onboarding ? t('comingSoon') : trDay(r.d), inWorkshop)}</div>
-          </div>
+            <div class="fact-value">${onboarding ? t('comingSoon') : trDay(r.d)}</div>
+          </div>`}
           <div>
             <div class="fact-label">${t('factCoach')}</div>
             <div class="fact-value">${escapeHtml(displayCoachName(r.c)) || t('comingSoon')}</div>
@@ -1199,9 +1208,8 @@
         </div>
         ${noCoach
           ? `<div class="note warn">${t('noteWarn')}</div>`
-          : (onboarding ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
+          : (onboarding || inWorkshop ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
         }
-        ${inWorkshop ? `<div class="note info">${t('ws').resumes(resumes)}</div>` : ''}
         ${workshopSectionHtml(r) || (inWorkshop ? '' : `<div class="note info">${t('noteWorkshop')}</div>`)}
         ${group ? `
         <div class="group-block">
