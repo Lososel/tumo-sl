@@ -172,7 +172,7 @@
         'END:VEVENT']);
     };
     const cls = classSchedule(rec);
-    if (cls) add('class', opts.classTitle, cls, [rec.room, opts.location].filter(Boolean).join(', '));
+    if (cls) add('class', opts.classTitle, cls, [rec.room, opts.location].filter(Boolean).join(', '), { from: classResumes(rec, now) });
     const tl = workshopTimeline(rec, now);
     [tl.current, tl.next].filter(Boolean).forEach((w, i) => {
       const sched = parseScheduleText(w.time);
@@ -180,7 +180,7 @@
       const from = isoDay(w.start);
       add('workshop' + i, `${opts.workshopTitle}: ${w.title}`, sched,
           [w.room, opts.location].filter(Boolean).join(', '),
-          { from: from && from > now ? from : now, until: isoDay(w.end) });
+          { from: from && from > now ? from : now, until: workshopEnd(w) });
     });
     if (!events.length) return '';
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TUMO Astana//Schedule//RU', 'CALSCALE:GREGORIAN',
@@ -190,17 +190,29 @@
     return lines.map(foldLine).join('\r\n') + '\r\n';
   }
 
-  // Google Calendar "add event" link for the regular class (weekly).
+  // Google Calendar "add event" link (one weekly event): the running workshop until its last day,
+  // otherwise the regular class.
   function googleCalendarUrl(rec, opts) {
-    const cls = classSchedule(rec);
-    if (!cls) return '';
-    const day = ymd(firstDate(cls.days, opts.now || new Date()));
+    const now = opts.now || new Date();
+    const cur = workshopTimeline(rec, now).current;
+    const wsched = cur && parseScheduleText(cur.time);
+    let ev;
+    if (wsched) {
+      const start = isoDay(cur.start), end = workshopEnd(cur);
+      ev = { sched: wsched, from: start && start > now ? start : now, title: `${opts.workshopTitle}: ${cur.title}`,
+             room: cur.room, until: end ? `;UNTIL=${ymd(end)}T185959Z` : '' };
+    } else {
+      const cls = classSchedule(rec);
+      if (!cls) return '';
+      ev = { sched: cls, from: classResumes(rec, now), title: opts.classTitle, room: rec.room, until: '' };
+    }
+    const day = ymd(firstDate(ev.sched.days, ev.from));
     const t = s => s.replace(':', '') + '00';
     const q = new URLSearchParams({
-      action: 'TEMPLATE', text: opts.classTitle, ctz: 'Asia/Almaty',
-      dates: `${day}T${t(cls.start)}/${day}T${t(cls.end)}`,
-      recur: `RRULE:FREQ=WEEKLY;BYDAY=${cls.days.join(',')}`,
-      location: [rec.room, opts.location].filter(Boolean).join(', '), details: rec.n
+      action: 'TEMPLATE', text: ev.title, ctz: 'Asia/Almaty',
+      dates: `${day}T${t(ev.sched.start)}/${day}T${t(ev.sched.end)}`,
+      recur: `RRULE:FREQ=WEEKLY;BYDAY=${ev.sched.days.join(',')}${ev.until}`,
+      location: [ev.room, opts.location].filter(Boolean).join(', '), details: rec.n
     });
     return 'https://calendar.google.com/calendar/render?' + q.toString();
   }
@@ -211,6 +223,56 @@
     return new Date(y, m - 1, d);
   };
 
+  // Workshops run one month: without an end date in the sheet, the last day is a month after the start.
+  function workshopEnd(w) {
+    const end = isoDay(w.end), start = isoDay(w.start);
+    return end || (start ? new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1) : null);
+  }
+
+  // The dates a workshop really meets: first to last session (Пн/Чт 10:30, 2026-10-26 … 2026-11-22
+  // -> 26.10 – 19.11). Without parseable days: start to end. null without a start date.
+  function workshopDates(w) {
+    const start = isoDay(w.start), end = workshopEnd(w);
+    if (!start) return null;
+    const sched = parseScheduleText(w.time);
+    if (!sched) return { from: start, to: end };
+    const meets = d => sched.days.some(c => CODE_INDEX[c] === d.getDay());
+    const from = firstDate(sched.days, start);
+    const to = new Date(end);
+    for (let i = 0; i < 7 && !meets(to); i++) to.setDate(to.getDate() - 1);
+    return from <= to ? { from, to } : { from: start, to: end };
+  }
+
+  const MONTHS = {
+    ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+    kk: ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'],
+    // Kazakh locative, «23 қарашада» = "on 23 November"
+    'kk-loc': ['қаңтарда', 'ақпанда', 'наурызда', 'сәуірде', 'мамырда', 'маусымда', 'шілдеде', 'тамызда', 'қыркүйекте', 'қазанда',
+               'қарашада', 'желтоқсанда']
+  };
+  // "26 октября" (lang 'ru' | 'kk': "26 қазан" | 'kk-loc': "26 қазанда")
+  function formatDay(d, lang, withYear) {
+    return `${d.getDate()} ${(MONTHS[lang] || MONTHS.ru)[d.getMonth()]}${withYear ? ' ' + d.getFullYear() : ''}`;
+  }
+  // "26 октября – 19 ноября"; the year only when the range crosses one.
+  function formatDateRange(range, lang) {
+    if (!range) return '';
+    const year = range.from.getFullYear() !== range.to.getFullYear();
+    return `${formatDay(range.from, lang, year)} – ${formatDay(range.to, lang, year)}`;
+  }
+
+  // While a workshop runs the student doesn't come to self-learning: the stage shows «Воркшоп».
+  const WORKSHOP_STAGE = 'Воркшоп';
+  function effectiveStage(rec, now) {
+    return workshopTimeline(rec, now).current ? WORKSHOP_STAGE : rec.stage;
+  }
+  // First day the regular class meets again: after the running workshop (if any), else today.
+  function classResumes(rec, now) {
+    const cur = workshopTimeline(rec, now).current;
+    const end = cur && workshopEnd(cur);
+    return end ? new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1) : now;
+  }
+
   // Current and next workshop of a student and the alerts to show:
   //   current: running today (start <= today <= end; missing dates count as open-ended)
   //   next:    the earliest one that hasn't started yet
@@ -220,7 +282,7 @@
     const days = soonDays || 14;
     const today = new Date((now || new Date()).getFullYear(), (now || new Date()).getMonth(), (now || new Date()).getDate());
     const list = (rec.workshops || []).filter(w => {
-      const end = isoDay(w.end);
+      const end = workshopEnd(w);
       return !end || end >= today;                     // finished workshops are dropped
     });
     const started = w => { const s = isoDay(w.start); return !s || s <= today; };
@@ -340,12 +402,12 @@
       email: cleanText(o.email).toLowerCase(),
       room: cleanText(o.room),
       status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
-      // Workshops from the workshop sheet: [{title, room, coach, time, start, end, changed}],
+      // Workshops from the workshop sheet: [{title, room, leader, time, start, end, changed}],
       // dates ISO 'YYYY-MM-DD' or ''. Sorted by start date.
       workshops: (Array.isArray(o.workshops) ? o.workshops : []).map(w => Array.isArray(w)
-        ? { title: cleanText(w[0]), room: cleanText(w[1]), coach: cleanText(w[2]), time: cleanText(w[3]),
+        ? { title: cleanText(w[0]), room: cleanText(w[1]), leader: cleanText(w[2]), time: cleanText(w[3]),
             start: cleanText(w[4]), end: cleanText(w[5]), changed: cleanText(w[6]) }
-        : { title: cleanText(w.title), room: cleanText(w.room), coach: cleanText(w.coach), time: cleanText(w.time),
+        : { title: cleanText(w.title), room: cleanText(w.room), leader: cleanText(w.leader || w.coach), time: cleanText(w.time),
             start: cleanText(w.start), end: cleanText(w.end), changed: cleanText(w.changed) })
         .filter(w => w.title)
     };
@@ -464,7 +526,7 @@
   }
 
   return { properCase, coachName, studentId, parseScheduleText, classSchedule, buildIcs, googleCalendarUrl,
-           workshopTimeline, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
+           workshopTimeline, workshopEnd, workshopDates, formatDay, formatDateRange, effectiveStage, classResumes, WORKSHOP_STAGE, normalizeTime, parseCsv, parseStudents, parseSource, formatUpdated, fromJson, fromCsv, loadStudents,
            nameTokens, queryTokens, matchesName, searchStudents, MIN_QUERY_LETTERS, MIN_QUERY_WORDS, MAX_RESULTS,
            DEFAULT_STAGE };
 });
