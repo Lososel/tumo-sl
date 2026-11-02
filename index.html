@@ -226,6 +226,15 @@
   .ws-active .ws-name{font-size:24px;padding:14px 20px 0;}
   .ws-active .facts{padding:0 20px 18px;}
   .ws-actions{margin-top:14px;}
+  /* an upcoming workshop's prerequisite activities on the platform */
+  .ws-acts{margin-top:14px;}
+  .ws-acts ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px;}
+  .ws-acts li{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:8px 12px;font-size:14px;color:var(--black);}
+  .ws-acts .st{flex:none;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:#f1f5f9;color:#64748b;}
+  .ws-acts .st-awarded{background:#e6f4ea;color:#137333;}
+  .ws-acts .st-working{background:#e8f0fe;color:#1967d2;}
+  .ws-acts .st-pending{background:#fef7e0;color:#b06000;}
+  .ws-acts .st-rejected{background:#fce8e6;color:#c5221f;}
   .ws-active .ws-actions{margin:0;padding:0 20px 18px;}
   .ws-active + .facts, .ws-only + .facts{margin-top:22px;}
   .badge.ws-on{background:var(--purple-deep);color:#fff;}
@@ -685,6 +694,8 @@
             savedTitle:'Мои ученики', remove:'Убрать', linkNotFound:'Ссылка устарела или ученик не найден — найдите его по имени и фамилии.',
             classSL:'TUMO: самообучение', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
       ws:{ current:'Текущий воркшоп', next:'Следующий воркшоп', room:'Кабинет / зона', leader:'Воркшоп лидер', leaderEmail:'Email воркшоп лидера',
+           actsTitle:'Задания к воркшопу', actsDone:(n, all)=>`выполнено ${n} из ${all}`,
+           actStatus:{ 'awarded':'Выполнено', 'working':'В работе', 'pending':'На проверке', 'rejected':'Нужно доработать', 'not opened':'Не начато' },
            time:'Дни и время', dates:'Даты проведения', until:(d)=>`до ${d}`,
            onlyWorkshop:(d)=>`Сейчас вы посещаете только воркшоп. Самообучение возобновится с ${StudentData.formatDay(d, 'ru').replace(' ', '\u00a0')}.`,
            badge:'Воркшоп изменён', badgeSoon:'Скоро новый воркшоп', badgeOn:'Воркшоп',
@@ -752,6 +763,8 @@
             savedTitle:'Менің оқушыларым', remove:'Жою', linkNotFound:'Сілтеме ескірген немесе оқушы табылмады — оны аты-жөні бойынша іздеңіз.',
             classSL:'TUMO: өзіндік оқу', classOnb:'TUMO: онбординг', workshop:'TUMO: воркшоп' },
       ws:{ current:'Ағымдағы воркшоп', next:'Келесі воркшоп', room:'Кабинет / аймақ', leader:'Воркшоп лидері', leaderEmail:'Воркшоп лидерінің email-і',
+           actsTitle:'Воркшопқа арналған тапсырмалар', actsDone:(n, all)=>`${all} тапсырманың ${n} орындалды`,
+           actStatus:{ 'awarded':'Орындалды', 'working':'Орындалуда', 'pending':'Тексерілуде', 'rejected':'Пысықтау керек', 'not opened':'Басталмаған' },
            time:'Күндері мен уақыты', dates:'Өткізу күндері', until:(d)=>`${d} дейін`,
            onlyWorkshop:(d)=>`Қазір сіз тек воркшопқа қатысасыз. Өзіндік оқу ${StudentData.formatDay(d, 'kk-loc').replace(' ', '\u00a0')} қайта басталады.`,
            badge:'Воркшоп өзгерді', badgeSoon:'Жақында жаңа воркшоп', badgeOn:'Воркшоп',
@@ -912,8 +925,22 @@
           ${fact(w.dates, workshopDatesText(x))}
           ${fact(w.time, x.time)}
         </div>
+        ${activitiesHtml(x)}
         ${google ? `<div class="ws-actions"><a class="act-btn primary" href="${escapeHtml(google)}" target="_blank" rel="noopener">${ICON_CAL}${t('act').google}</a></div>` : ''}
       </div>`;
+  }
+  // «Задания к воркшопу»: the upcoming workshop's activities on the platform and how many are done.
+  function activitiesHtml(x){
+    const acts = x.activities || [];
+    if(!acts.length) return '';
+    const w = t('ws');
+    const done = acts.filter(a => a.status === 'awarded').length;
+    const cls = s => 'st-' + (s || 'none').replace(/\s+/g, '-');
+    return `
+        <div class="ws-acts">
+          <div class="fact-label">${w.actsTitle} · ${w.actsDone(done, acts.length)}</div>
+          <ul>${acts.map(a => `<li><span>${escapeHtml(a.name)}</span><span class="st ${cls(a.status)}">${escapeHtml(w.actStatus[a.status] || a.status || '—')}</span></li>`).join('')}</ul>
+        </div>`;
   }
   // The running workshop: shown first on the card, highlighted.
   function activeWorkshopHtml(r){

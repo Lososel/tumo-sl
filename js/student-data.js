@@ -430,11 +430,20 @@
       // dates ISO 'YYYY-MM-DD' or ''. Sorted by start date.
       workshops: (Array.isArray(o.workshops) ? o.workshops : []).map(w => Array.isArray(w)
         ? { title: cleanText(w[0]), room: cleanText(w[1]), leader: cleanText(w[2]), time: cleanText(w[3]),
-            start: cleanText(w[4]), end: cleanText(w[5]), changed: cleanText(w[6]) }
+            start: cleanText(w[4]), end: cleanText(w[5]), changed: cleanText(w[6]), activities: activitiesOf(w[7]) }
         : { title: cleanText(w.title), room: cleanText(w.room), leader: cleanText(w.leader || w.coach), time: cleanText(w.time),
-            start: cleanText(w.start), end: cleanText(w.end), changed: cleanText(w.changed) })
+            start: cleanText(w.start), end: cleanText(w.end), changed: cleanText(w.changed), activities: activitiesOf(w.activities) })
         .filter(w => w.title)
     };
+  }
+
+  // An upcoming workshop's prerequisite activities on the TUMO platform: [[name, status]] ->
+  // [{name, status}], status one of awarded / working / pending / rejected / not opened ('' if unknown).
+  function activitiesOf(list) {
+    return (Array.isArray(list) ? list : [])
+      .map(a => Array.isArray(a) ? { name: cleanText(a[0]), status: cleanText(a[1]).toLowerCase() }
+                                 : { name: cleanText(a && a.name), status: cleanText(a && a.status).toLowerCase() })
+      .filter(a => a.name);
   }
 
   // Positional row: [name, day, time, coach, exCoach, stage, email, room, status, workshops]

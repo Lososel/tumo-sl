@@ -44,6 +44,7 @@ Run automatically by .github/workflows/sync-students.yml.
 """
 import argparse
 import csv
+import functools
 import io
 import json
 import re
@@ -296,6 +297,18 @@ def attach_workshops(students, workshop_rows):
     fits. Inactive / waitlist students get nothing. Returns the rows that matched no student."""
     active = [s for s in students if not s[8]]
     by_email = {s[6]: s for s in active if s[6]}
+    # a student found by their own email can't also be claimed by the name in another email
+    claimed = {id(by_email[w["email"]]): w["email"] for w in workshop_rows if w.get("email") in by_email}
+
+    def name_match(w, parts=None):
+        other = match_by_email_name(w["email"], w.get("coach", ""), active, parts)
+        if other is None or claimed.get(id(other), w["email"]) != w["email"]:
+            return None
+        coach = w.get("coach", "")
+        if other[6] and other[6] != w["email"] and coach and other[3] and \
+                _latin_key(coach.split()[0]) != _latin_key(other[3].split()[0]):
+            return None  # has another email in the master sheet and another coach: someone else
+        return other
     by_name = {}
     for s in active:
         by_name.setdefault(norm(s[0]), []).append(s)
@@ -307,13 +320,15 @@ def attach_workshops(students, workshop_rows):
             parts = _email_parts(w["email"])
             if s is None or (parts and not _email_fits(parts, s[0])):
                 # not in the master sheet, or the master sheet has this email on someone else
-                other = match_by_email_name(w["email"], w.get("coach", ""), active)
+                other = name_match(w)
                 if other is not None and other is not s:
                     if s is not None:
                         w["note"] = f"почта {w['email']} в главной таблице записана у «{s[0]}», взят «{other[0]}»"
                     s = other
                 elif s is not None:
                     w["note"] = f"почта {w['email']} не похожа на имя «{s[0]}» — проверьте почту в главной таблице"
+            if s is None and w.get("latin_name"):  # «Upcoming» also has the name in Latin
+                s = name_match(w, [p for p in re.split(r"[\s\-]+", w["latin_name"].lower()) if p])
         if s is None and w["name"]:
             same = by_name.get(norm(w["name"]), [])
             if len(same) == 1:
@@ -326,7 +341,7 @@ def attach_workshops(students, workshop_rows):
             unmatched.append(w)
             continue
         w["student"] = s[0]
-        entry = [w[f] for f in WORKSHOP_FIELDS]
+        entry = [w[f] for f in WORKSHOP_FIELDS] + ([w["activities"]] if w.get("activities") else [])
         if entry not in s[9]:
             s[9].append(entry)
             s[9].sort(key=lambda e: (e[4] or "9999", e[0]))
@@ -422,6 +437,52 @@ def read_platform_export(raw):
     return out, info
 
 
+# «Upcoming»: the platform's plan of future workshops, one row per student per prerequisite activity:
+# Full Name | Schedule | Workshop | Start Date | Activity | Activity Status | Reject Count |
+# Last Submission Date | Tumo Email | Link. Only each student's next workshop (not started on `today`)
+# is kept, with its activities [[activity, status]]; the link is never published.
+def read_upcoming(raw, info, today=None):
+    import datetime
+
+    if raw[:2] != b"PK":
+        return []
+    import openpyxl
+
+    today = today or datetime.date.today()
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
+    plans = {}  # email -> {(workshop, start): {...}}
+    for ws in wb.worksheets:
+        it = ws.iter_rows(values_only=True)
+        h = _header_index(next(it, ()) or ())
+        if not {"tumo email", "workshop", "start date", "activity", "activity status"} <= set(h):
+            continue
+        col = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
+        for line_no, r in enumerate(it, start=2):
+            email = clean_ws(col(r, "tumo email")).lower()
+            name = clean_ws(col(r, "workshop"))
+            start = _export_date(col(r, "start date"))
+            if not email or not name or not start or start <= today:
+                continue
+            key = (name, start)
+            p = plans.setdefault(email, {}).setdefault(key, {
+                "where": f"[{ws.title}:{line_no}]", "email": email, "name": "",
+                "latin_name": clean_ws(col(r, "full name")), "schedule": clean_ws(col(r, "schedule")), "acts": []})
+            act = clean_ws(col(r, "activity"))
+            if act:
+                status = clean_ws(col(r, "activity status"))
+                p["acts"].append([act, "" if status.lower() == "null" else status])
+    out = []
+    for email, by_ws in plans.items():
+        (name, start), p = min(by_ws.items(), key=lambda kv: kv[0][1])
+        title, room, leader = info.get(name.lower(), (name, "", ""))
+        end = start - datetime.timedelta(days=start.weekday()) + datetime.timedelta(days=27)
+        out.append({"where": p["where"], "name": "", "latin_name": p["latin_name"], "email": email, "coach": "",
+                    "title": title, "room": room, "leader": leader, "time": _export_time(p["schedule"]),
+                    "start": start.isoformat(), "end": end.isoformat(), "changed": "",
+                    "activities": sorted(p["acts"])})
+    return out
+
+
 LATIN = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюяәғқңөұүһі",
                  ["a", "b", "v", "g", "d", "e", "e", "zh", "z", "i", "i", "k", "l", "m", "n", "o", "p", "r", "s", "t",
                   "u", "f", "h", "ts", "ch", "sh", "sh", "", "i", "", "e", "iu", "ia", "a", "g", "k", "n", "o", "u",
@@ -452,15 +513,25 @@ def _email_parts(email):
     return [] if all(len(p) <= 2 for p in parts) else parts
 
 
+PATRONYMIC_RE = re.compile(r"(ович|евич|овна|евна|ична|[ұу]лы|[қк]ызы)$")
+
+
+@functools.lru_cache(maxsize=None)
+def _name_pieces(name):
+    """Name words (patronymics after the first two words left out: «Сапарова Аяна Джамбуловна» is
+    not «diana.zhambulova») as Latin keys, single and adjacent pairs."""
+    raw = [w for i, w in enumerate(name.lower().replace("-", " ").split()) if i < 2 or not PATRONYMIC_RE.search(w)]
+    words = [_latin_key(w) for w in raw]
+    return raw, [(w, {i}) for i, w in enumerate(words)] + [(words[i] + words[i + 1], {i, i + 1}) for i in range(len(words) - 1)]
+
+
 def _email_fits(parts, name, exact=False):
     """Every part of the email is a different word of the name: spelling-insensitive; a 1–2 letter
     part is an initial; hyphenated names count as separate words and two words may be written
     together («diarali» = «Диар Али», «abu_muslim» = «Абу-Муслим»)."""
     import difflib
 
-    raw = name.lower().replace("-", " ").split()
-    words = [_latin_key(w) for w in raw]
-    pieces = [(w, {i}) for i, w in enumerate(words)] + [(words[i] + words[i + 1], {i, i + 1}) for i in range(len(words) - 1)]
+    raw, pieces = _name_pieces(name)
     used = set()
     for p in sorted(parts, key=len, reverse=True):
         key = _latin_key(p)
@@ -480,10 +551,11 @@ def _email_fits(parts, name, exact=False):
     return True
 
 
-def match_by_email_name(email, coach, students):
+def match_by_email_name(email, coach, students, parts=None):
     """«sagat.nuraly@tumo.world» -> the one active student whose name has those words, narrowed by
-    the SL coach when several fit. None if no single student fits."""
-    parts = _email_parts(email)
+    the SL coach when several fit. None if no single student fits. parts: words to use instead of
+    the email's (a Latin full name, «Abay Shalabay»)."""
+    parts = parts if parts is not None else _email_parts(email)
     if not parts:
         return None
     cands = [s for s in students if not s[8] and _email_fits(parts, s[0])]
@@ -669,14 +741,19 @@ def main():
     students, problems = parse(read_tables(raw, streams), {norm(r[0]): r for r in current}, stats)
     # The platform export («Лист3») in the workshop sheet is the one source of truth; without it, the
     # older hand-filled tabs («3d-modeling»…) and the master sheet's «Воркшопы» tab are read.
-    export_rows = []
+    export_rows, upcoming_rows = [], []
     for extra in args.workshops:
         if Path(extra).exists():
-            export_rows += read_platform_export(Path(extra).read_bytes())[0]
+            rows_, info = read_platform_export(Path(extra).read_bytes())
+            export_rows += rows_
+            upcoming_rows += read_upcoming(Path(extra).read_bytes(), info)
     if export_rows:
         workshop_rows = [w for w in export_rows if w["title"]]
         print(f"Воркшопы из выгрузки платформы: {len(export_rows)} учеников (без отказавшихся)")
         problems += [f"{w['where']} пустое поле Workshop — пропущено: {w['email']}" for w in export_rows if not w["title"]]
+    if upcoming_rows:
+        workshop_rows += upcoming_rows
+        print(f"Следующие воркшопы (Upcoming): {len(upcoming_rows)} учеников")
     else:
         workshop_rows = read_workshop_rows(raw, WORKSHOP_TAB_RE)
         for extra in args.workshops:
