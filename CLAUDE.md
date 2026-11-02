@@ -39,8 +39,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   (Workshop | На карточке | Кабинет / Зона | Workshop Leader); no title there → the export's English name.
 - **Upcoming workshops: the «Upcoming» tab** (platform export: Full Name | Schedule | Workshop | Start Date |
   Activity | Activity Status | Reject Count | Last Submission Date | Tumo Email | Link; one row per student per
-  prerequisite activity, the plan through the year). The sync keeps each student's next workshop that hasn't
-  started (`read_upcoming`) with its activities as an 8th element `[[activity, status]]` of the workshop entry;
+  prerequisite activity, the plan through the year). The sync keeps only the next cycle — workshops starting in the
+  week of the earliest start date after today (23–24.11), nothing later (`read_upcoming`) — with its activities as an 8th element `[[activity, status]]` of the workshop entry;
   the card's «Следующий воркшоп» shows «Задания к воркшопу · выполнено N из 3» with RU/KZ status chips
   (Awarded/Working/Pending/Rejected/Not Opened). Matched like «Лист3» (email, name in the email, then the Latin
   Full Name). The Link column is never published. Matching rules: a student found by their own email can't be
