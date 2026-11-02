@@ -287,3 +287,16 @@ test('workshopLeaderEmail: the sheet\'s leader name (Latin / Cyrillic, surname o
   assert.strictEqual(S.workshopLeaderEmail('Иван Петров'), '');
   assert.strictEqual(S.workshopLeaderEmail(''), '');
 });
+
+test('upcoming workshop: the prerequisite activities and their status', () => {
+  const [r] = S.fromJson({ students: [['Иван Петров', 'Вторник', '10:30-12:30', 'Almas', '', 'Самообучение', '', '', '',
+    [['Робототехника I', '2 этаж, WR 1', 'Бердиходжаев Адилбек', 'Пн, Чт 10:30–12:30', '2026-11-23', '2026-12-20', '',
+      [['Falling Bananas: The Beginning', 'Awarded'], ['Falling Bananas: The End', 'Not Opened'], ['', 'Working']]]]]] });
+  const w = r.workshops[0];
+  assert.deepStrictEqual(w.activities, [{ name: 'Falling Bananas: The Beginning', status: 'awarded' },
+                                        { name: 'Falling Bananas: The End', status: 'not opened' }]);
+  const tl = S.workshopTimeline(r, new Date(2026, 10, 2));
+  assert.deepStrictEqual([tl.current, tl.next.title], [null, 'Робототехника I']);
+  assert.strictEqual(S.formatDateRange(S.workshopDates(w), 'ru'), '23 ноября – 17 декабря');
+  assert.deepStrictEqual(S.fromJson({ students: [['A B', '', '', '', '', '', '', '', '', [['X', '', '', '', '', '', '']]]] })[0].workshops[0].activities, []);
+});

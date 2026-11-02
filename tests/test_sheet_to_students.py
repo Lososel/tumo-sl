@@ -334,6 +334,44 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual((a[9], b[9][0][0]), ([], "Film"))
         self.assertIn("Кабарова", w["note"])
 
+    def test_upcoming_keeps_each_students_next_workshop_with_its_activities(self):
+        import datetime
+        hdr = ["Full Name", "Schedule", "Workshop", "Start Date", "Activity", "Activity Status", "Reject Count",
+               "Last Submission Date", "Tumo Email", "Link"]
+        r = lambda name, ws, start, act, st, email, sched="Thursday 14:30": [  # noqa: E731
+            name, sched, ws, start, act, st, "", "", email, "https://360.ast.tumo.world/reg/view?id=x"]
+        raw = xlsx({"Upcoming": [hdr,
+            r("Ivan Petrov", "Programming I", "Nov 23, 2026", "JS Basics", "Awarded", "ivan.petrov@tumo.world"),
+            r("Ivan Petrov", "Programming I", "Nov 23, 2026", "JS Math", "Not Opened", "ivan.petrov@tumo.world"),
+            r("Ivan Petrov", "Robotics II", "Feb 8, 2027", "Bananas", "Working", "ivan.petrov@tumo.world"),
+            r("Ivan Petrov", "Music I", "Oct 26, 2026", "Old", "Awarded", "ivan.petrov@tumo.world"),   # started
+            r("Aigerim Saparova", "Music I", "Nov 24, 2026", "Beats", "Pending", "a.saparova@tumo.world"),
+            r("Diana Zhambulova", "Music I", "Nov 24, 2026", "Beats", "Rejected", "diana.zhambulova@tumo.world")]})
+        info = {"programming i": ("Программирование I", "3 этаж, WR 14", "Ахметова Дана")}
+        up = sts.read_upcoming(raw, info, today=datetime.date(2026, 11, 2))
+        ivan = next(w for w in up if w["email"] == "ivan.petrov@tumo.world")
+        self.assertEqual({k: ivan[k] for k in ("title", "room", "time", "start", "end", "activities")},
+                         {"title": "Программирование I", "room": "3 этаж, WR 14", "time": "Пн, Чт 14:30–16:30",
+                          "start": "2026-11-23", "end": "2026-12-20",
+                          "activities": [["JS Basics", "Awarded"], ["JS Math", "Not Opened"]]})
+        self.assertNotIn("360.ast", repr(up))  # the link is never kept
+        rec = lambda name, email="": [name, "Вторник", "14:30-16:30", "Almas", "", "Самообучение", email, "", "", []]  # noqa: E731
+        students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Сапарова Айгерим Ерлановна"),
+                    rec("Сапарова Аяна Джамбуловна")]
+        unmatched = sts.attach_workshops(students, up)
+        self.assertEqual([s[9][0][7] if s[9] else None for s in students],
+                         [[["JS Basics", "Awarded"], ["JS Math", "Not Opened"]], [["Beats", "Pending"]], None])
+        self.assertEqual([w["email"] for w in unmatched], ["diana.zhambulova@tumo.world"])  # not her patronymic
+
+    def test_a_student_found_by_email_is_not_claimed_by_another_email(self):
+        rec = lambda name, email: [name, "", "", "Aruzhan", "", "Самообучение", email, "", "", []]  # noqa: E731
+        amir = rec("Алибаев Амир Нурболұлы", "alibaev.amir@tumo.world")
+        row = lambda email: {"where": "[x]", "name": "", "email": email, "coach": "", "title": email, "room": "",  # noqa: E731
+                             "leader": "", "time": "", "start": "", "end": "", "changed": ""}
+        unmatched = sts.attach_workshops([amir], [row("alibaev.amir@tumo.world"), row("amira.alibaeva@tumo.world")])
+        self.assertEqual([w[0] for w in amir[9]], ["alibaev.amir@tumo.world"])
+        self.assertEqual([w["email"] for w in unmatched], ["amira.alibaeva@tumo.world"])
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path

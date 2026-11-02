@@ -37,6 +37,15 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   «WorkshopSchedule» «Tuesday 14:30» → «Вт, Пт 14:30–16:30»; the period ends on the Sunday of the 4th week.
   Title on the card, room and leader per workshop come from the tab «Кабинеты и лидеры»
   (Workshop | На карточке | Кабинет / Зона | Workshop Leader); no title there → the export's English name.
+- **Upcoming workshops: the «Upcoming» tab** (platform export: Full Name | Schedule | Workshop | Start Date |
+  Activity | Activity Status | Reject Count | Last Submission Date | Tumo Email | Link; one row per student per
+  prerequisite activity, the plan through the year). The sync keeps each student's next workshop that hasn't
+  started (`read_upcoming`) with its activities as an 8th element `[[activity, status]]` of the workshop entry;
+  the card's «Следующий воркшоп» shows «Задания к воркшопу · выполнено N из 3» with RU/KZ status chips
+  (Awarded/Working/Pending/Rejected/Not Opened). Matched like «Лист3» (email, name in the email, then the Latin
+  Full Name). The Link column is never published. Matching rules: a student found by their own email can't be
+  claimed by another email's name; patronymics don't count; a student with another master-sheet email needs
+  the same SL coach.
 - Older layout (used only without the export): the workshop sheet «Workshops 26.10» (Drive file
   `1E1L3mJdGASq0hkV83i5knWpXgmWNF8eO1e7HBiAcIYE`, workflow var `WORKSHOP_SHEET_FILE_ID`) and/or a
   «Воркшопы» tab in the master sheet. Header row: ФИО ученика | Почта TUMO (optional) | Воркшоп |
