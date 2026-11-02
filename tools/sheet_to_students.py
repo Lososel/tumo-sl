@@ -303,7 +303,18 @@ def attach_workshops(students, workshop_rows):
     unmatched = []
     for w in workshop_rows:
         s = by_email.get(w["email"]) if w["email"] else None
-        if s is None:
+        if w["email"] and not w["name"]:  # the platform export: email only
+            parts = _email_parts(w["email"])
+            if s is None or (parts and not _email_fits(parts, s[0])):
+                # not in the master sheet, or the master sheet has this email on someone else
+                other = match_by_email_name(w["email"], w.get("coach", ""), active)
+                if other is not None and other is not s:
+                    if s is not None:
+                        w["note"] = f"почта {w['email']} в главной таблице записана у «{s[0]}», взят «{other[0]}»"
+                    s = other
+                elif s is not None:
+                    w["note"] = f"почта {w['email']} не похожа на имя «{s[0]}» — проверьте почту в главной таблице"
+        if s is None and w["name"]:
             same = by_name.get(norm(w["name"]), [])
             if len(same) == 1:
                 s = same[0]
@@ -314,11 +325,175 @@ def attach_workshops(students, workshop_rows):
         if s is None:
             unmatched.append(w)
             continue
+        w["student"] = s[0]
         entry = [w[f] for f in WORKSHOP_FIELDS]
         if entry not in s[9]:
             s[9].append(entry)
             s[9].sort(key=lambda e: (e[4] or "9999", e[0]))
     return unmatched
+
+
+# ---- the TUMO platform's workshop export («Лист3»): the one source of truth when present ----
+# Columns: Location | Year | Month | StartDate | Workshop | WorkshopSchedule | StudentSchedule | AppliedStatus |
+# TumoEmail | TumoID | Attendance | PassStatus | Star | WithdrawDate | Comment | CoachName. One row per student.
+# It has no room, leader or Russian title: those come per workshop from the «Кабинеты и лидеры» tab
+# (Workshop | На карточке | Кабинет / Зона | Workshop Leader).
+EXPORT_DAYS = {"monday": ("Пн", "Чт"), "thursday": ("Пн", "Чт"), "tuesday": ("Вт", "Пт"), "friday": ("Вт", "Пт"),
+               "wednesday": ("Ср",), "saturday": ("Сб",)}
+MONTHS_EN = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+def _export_date(value):
+    """"Oct 27, 2026" (or a date cell) -> datetime.date, None if not a date."""
+    import datetime
+
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value if not isinstance(value, datetime.datetime) else value.date()
+    m = re.match(r"\s*([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})", str(value or ""))
+    if not m or m.group(1).lower() not in MONTHS_EN:
+        return None
+    return datetime.date(int(m.group(3)), MONTHS_EN[m.group(1).lower()], int(m.group(2)))
+
+
+def _export_time(schedule):
+    """"Tuesday 14:30" -> "Вт, Пт 14:30–16:30" (TUMO pairs Mon/Thu and Tue/Fri; a session is 2 hours)."""
+    m = re.match(r"\s*([A-Za-z]+)\s+(\d{1,2}):(\d{2})", str(schedule or ""))
+    if not m or m.group(1).lower() not in EXPORT_DAYS:
+        return clean_ws(schedule)
+    h, mm = int(m.group(2)), m.group(3)
+    return f"{', '.join(EXPORT_DAYS[m.group(1).lower()])} {h:02d}:{mm}–{h + 2:02d}:{mm}"
+
+
+def _header_index(header):
+    return {clean_ws(c).lower(): i for i, c in enumerate(header) if clean_ws(c)}
+
+
+def read_platform_export(raw):
+    """xlsx bytes -> (rows, info) from the platform export tab and the «Кабинеты и лидеры» tab.
+
+    rows: [{where, email, coach, title, room, leader, time, start, end, changed, name}] for every
+    student who hasn't withdrawn; title/room/leader come from the info tab (title falls back to the
+    export's English name). The period ends on the Sunday of the 4th week (26.10 -> 22.11).
+    info: {export workshop name: (title, room, leader)}. ([], {}) when there is no export tab."""
+    import datetime
+
+    if raw[:2] != b"PK":
+        return [], {}
+    import openpyxl
+
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
+    export, info = None, {}
+    for ws in wb.worksheets:
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        h = _header_index(rows[0])
+        if {"tumoemail", "workshop", "workshopschedule"} <= set(h):
+            export = (ws.title, h, rows[1:])
+        elif "workshop" in h and any(k.startswith("кабинет") for k in h):
+            room_col = next(i for k, i in h.items() if k.startswith("кабинет"))
+            lead_col = next((i for k, i in h.items() if "leader" in k or "лидер" in k), None)
+            title_col = next((i for k, i in h.items() if k.startswith("на карточке")), None)
+            for r in rows[1:]:
+                key = clean_ws(r[h["workshop"]] if h["workshop"] < len(r) else "")
+                cell = lambda i: clean_ws(r[i]) if i is not None and i < len(r) else ""  # noqa: E731
+                if key:
+                    info[key.lower()] = (cell(title_col) or key, cell(room_col), canon_coach(cell(lead_col)))
+    if export is None:
+        return [], info
+    tab, h, body = export
+    col = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
+    out = []
+    for line_no, r in enumerate(body, start=2):
+        email = clean_ws(col(r, "tumoemail")).lower()
+        if not email:
+            continue
+        withdrawn = clean_ws(col(r, "passstatus")).lower() == "withdrawn" or clean_ws(col(r, "withdrawdate")).lower() not in ("", "null")
+        if withdrawn or clean_ws(col(r, "appliedstatus")).lower() not in ("", "approved"):
+            continue
+        name = clean_ws(col(r, "workshop"))
+        start = _export_date(col(r, "startdate"))
+        title, room, leader = info.get(name.lower(), (name, "", ""))
+        end = start - datetime.timedelta(days=start.weekday()) + datetime.timedelta(days=27) if start else None
+        out.append({"where": f"[{tab}:{line_no}]", "name": "", "email": email,
+                    "coach": clean_ws(col(r, "coachname")), "title": title, "room": room, "leader": leader,
+                    "time": _export_time(col(r, "workshopschedule")),
+                    "start": start.isoformat() if start else "", "end": end.isoformat() if end else "", "changed": ""})
+    return out, info
+
+
+LATIN = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюяәғқңөұүһі",
+                 ["a", "b", "v", "g", "d", "e", "e", "zh", "z", "i", "i", "k", "l", "m", "n", "o", "p", "r", "s", "t",
+                  "u", "f", "h", "ts", "ch", "sh", "sh", "", "i", "", "e", "iu", "ia", "a", "g", "k", "n", "o", "u",
+                  "u", "h", "i"]))
+
+
+def _latin_key(word):
+    """A spelling-insensitive Latin key: «Сағат» and «sagat», «Ерсұлтан» and «yersultan», «Артём» and
+    «artyom» agree."""
+    w = "".join(LATIN.get(c, c) for c in word.lower())
+    for a, b in (("yo", "e"), ("kh", "h"), ("q", "k"), ("y", "i"), ("j", "zh"), ("dzh", "zh"), ("gh", "g"),
+                 ("ss", "s"), ("ll", "l"), ("ii", "i")):
+        w = w.replace(a, b)
+    return re.sub(r"^ie", "e", re.sub(r"[^a-z]", "", w))
+
+
+# An initial in an email -> the Cyrillic letters a name may start with («y» = Е/Ы/Й/Ю/Я, «d» = Д/Дж…).
+INITIALS = {"a": "аә", "b": "б", "c": "цч", "d": "д", "e": "еэ", "f": "ф", "g": "гғ", "h": "хһ", "i": "иіы",
+            "j": "дж", "k": "кқх", "l": "л", "m": "м", "n": "нң", "o": "оө", "p": "п", "q": "қк", "r": "р",
+            "s": "сш", "t": "т", "u": "уұүю", "v": "в", "y": "еыйюя", "z": "зж"}
+
+
+def _email_parts(email):
+    """«alikhan.yntalbek1@tumo.world» -> ["alikhan", "yntalbek"] (lowercase ASCII); [] when no part
+    of it is longer than an initial."""
+    parts = [re.sub(r"[^a-z]", "", p) for p in re.split(r"[._\-]+", email.split("@")[0].lower())]
+    parts = [p for p in parts if p]
+    return [] if all(len(p) <= 2 for p in parts) else parts
+
+
+def _email_fits(parts, name, exact=False):
+    """Every part of the email is a different word of the name: spelling-insensitive; a 1–2 letter
+    part is an initial; hyphenated names count as separate words and two words may be written
+    together («diarali» = «Диар Али», «abu_muslim» = «Абу-Муслим»)."""
+    import difflib
+
+    raw = name.lower().replace("-", " ").split()
+    words = [_latin_key(w) for w in raw]
+    pieces = [(w, {i}) for i, w in enumerate(words)] + [(words[i] + words[i + 1], {i, i + 1}) for i in range(len(words) - 1)]
+    used = set()
+    for p in sorted(parts, key=len, reverse=True):
+        key = _latin_key(p)
+        for w, idx in pieces:
+            if idx & used:
+                continue
+            first = raw[min(idx)][:1]
+            if len(p) <= 2:
+                ok = len(idx) == 1 and (first in INITIALS.get(p[0], "") or w.startswith(key))
+            else:
+                ok = w == key or (not exact and difflib.SequenceMatcher(None, key, w).ratio() >= 0.8)
+            if ok:
+                used |= idx
+                break
+        else:
+            return False
+    return True
+
+
+def match_by_email_name(email, coach, students):
+    """«sagat.nuraly@tumo.world» -> the one active student whose name has those words, narrowed by
+    the SL coach when several fit. None if no single student fits."""
+    parts = _email_parts(email)
+    if not parts:
+        return None
+    cands = [s for s in students if not s[8] and _email_fits(parts, s[0])]
+    if len(cands) > 1:  # prefer names where every long part is spelled the same («ailana» = Айлана, not Алан)
+        exact = [s for s in cands if _email_fits(parts, s[0], exact=True)]
+        cands = exact or cands
+    if len(cands) > 1 and coach:
+        c = _latin_key(coach.split()[0])
+        cands = [s for s in cands if s[3] and _latin_key(s[3].split()[0]) == c] or cands
+    return cands[0] if len(cands) == 1 else None
 
 
 def stream_of(tab):
@@ -492,15 +667,27 @@ def main():
     streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
     raw = Path(args.source).read_bytes()
     students, problems = parse(read_tables(raw, streams), {norm(r[0]): r for r in current}, stats)
-    workshop_rows = read_workshop_rows(raw, WORKSHOP_TAB_RE)
+    # The platform export («Лист3») in the workshop sheet is the one source of truth; without it, the
+    # older hand-filled tabs («3d-modeling»…) and the master sheet's «Воркшопы» tab are read.
+    export_rows = []
     for extra in args.workshops:
         if Path(extra).exists():
-            workshop_rows += read_workshop_rows(Path(extra).read_bytes())
+            export_rows += read_platform_export(Path(extra).read_bytes())[0]
+    if export_rows:
+        workshop_rows = [w for w in export_rows if w["title"]]
+        print(f"Воркшопы из выгрузки платформы: {len(export_rows)} учеников (без отказавшихся)")
+        problems += [f"{w['where']} пустое поле Workshop — пропущено: {w['email']}" for w in export_rows if not w["title"]]
+    else:
+        workshop_rows = read_workshop_rows(raw, WORKSHOP_TAB_RE)
+        for extra in args.workshops:
+            if Path(extra).exists():
+                workshop_rows += read_workshop_rows(Path(extra).read_bytes())
     unmatched = attach_workshops(students, workshop_rows)
     if workshop_rows:
         print(f"Воркшопы: {len(workshop_rows)} строк, найдено учеников: {len(workshop_rows) - len(unmatched)}")
         for w in unmatched:
             problems.append(f"{w['where']} воркшоп «{w['title']}»: ученик не найден: {w['email'] or w['name']}")
+        problems += [f"{w['where']} {w['note']}" for w in workshop_rows if w.get("note")]
     active = [s for s in students if not s[8]]
     onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
     print(f"Учеников: {len(students)} — активных: {len(active)} (самообучение: {len(active) - onboarding}, "

@@ -281,6 +281,59 @@ class SheetToStudentsTest(unittest.TestCase):
             ["Анна Смирнова", None, "3D-моделирование I", "3 этаж, WR 5", "Rizakhmet", "Пн, Чт 14:30–16:30"]]})
         self.assertEqual([r["name"] for r in sts.read_workshop_rows(workshops)], ["Иван Петров", "Анна Смирнова"])
 
+    def test_platform_export_is_the_source_of_truth(self):
+        # «Лист3»: the TUMO platform export (one row per student, matched by TumoEmail) + «Кабинеты и лидеры»
+        hdr = ["Location", "Year", "Month", "StartDate", "Workshop", "WorkshopSchedule", "StudentSchedule",
+               "AppliedStatus", "TumoEmail", "TumoID", "Attendance", "PassStatus", "Star", "WithdrawDate", "Comment",
+               "CoachName"]
+        row_ = lambda ws, sched, email, coach, passed="null", withdraw="null": [  # noqa: E731
+            "Astana", "2026", "November", "Oct 27, 2026", ws, sched, "Friday 14:30", "Approved", email, "260210000001",
+            "", passed, "false", withdraw, "null", coach]
+        workshops = xlsx({
+            "Лист3": [hdr,
+                      row_("3D Modeling I", "Tuesday 14:30", "ivan.petrov@tumo.world", "Almas Musalimov"),  # by email
+                      row_("Music I", "Monday 16:30", "sagat.nuraly@tumo.world", "Aruzhan Khamzina"),       # by name in it
+                      row_("Robotics I", "Tuesday 10:30", "ailana.s@tumo.world", "Nuray Ergazyeva"),        # initial + coach
+                      row_("Robotics I", "Tuesday 10:30", "left.one@tumo.world", "Almas", passed="Withdrawn"),
+                      row_("", "Tuesday 14:30", "no.title@tumo.world", "Almas Musalimov")],
+            "Кабинеты и лидеры": [["Workshop", "На карточке", "Кабинет / Зона", "Workshop Leader"],
+                                  ["3D Modeling I", "3D-моделирование I", "3 этаж, WR 5", "Даулетбай Ризахмет"]],
+            "3d-modeling": [["ФИО ученика", "Воркшоп"], ["Иван Петров", "Old tab is ignored"]]})
+        rows, info = sts.read_platform_export(workshops)
+        self.assertEqual(info["3d modeling i"], ("3D-моделирование I", "3 этаж, WR 5", "Даулетбай Ризахмет"))
+        self.assertEqual([r["email"] for r in rows],
+                         ["ivan.petrov@tumo.world", "sagat.nuraly@tumo.world", "ailana.s@tumo.world", "no.title@tumo.world"])
+        self.assertEqual({k: rows[0][k] for k in ("title", "room", "leader", "time", "start", "end")},
+                         {"title": "3D-моделирование I", "room": "3 этаж, WR 5", "leader": "Даулетбай Ризахмет",
+                          "time": "Вт, Пт 14:30–16:30", "start": "2026-10-27", "end": "2026-11-22"})
+        self.assertEqual((rows[1]["title"], rows[1]["time"], rows[1]["room"]), ("Music I", "Пн, Чт 16:30–18:30", ""))
+        rec = lambda name, email="", coach="Almas": [name, "Вторник", "14:30-16:30", coach, coach, "Самообучение", email, "", "", []]  # noqa: E731
+        students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Сағат Нұралы Етболатұлы"),
+                    rec("Салханова Айлана Ерхатовна", coach="Nurai"), rec("Сагиранова Айлана Адлетовна", coach="Alen")]
+        unmatched = sts.attach_workshops(students, [r for r in rows if r["title"]])
+        self.assertEqual(unmatched, [])
+        self.assertEqual([s[9][0][0] if s[9] else None for s in students],
+                         ["3D-моделирование I", "Music I", "Robotics I", None])
+
+    def test_email_name_matching(self):
+        fits = lambda e, n: sts._email_fits(sts._email_parts(e), n)  # noqa: E731
+        self.assertTrue(fits("yersultan.y@tumo.world", "Есенғали Ерсұлтан Қамбарұлы"))
+        self.assertTrue(fits("diarali.nurgaliyev@tumo.world", "Нургалиев Диар Али Жеңісұлы"))
+        self.assertTrue(fits("abu_muslim.aman@tumo.world", "Абу-Муслим Аман Серикұлы"))
+        self.assertTrue(fits("belonosov.artyom@tumo.world", "Белоносов Артём Александрович"))
+        self.assertTrue(fits("mariyam.y@tumo.world", "Мариям Есентай"))
+        self.assertTrue(fits("alikhan.yntalbek1@tumo.world", "Ынталбек Алихан Қанатұлы"))
+        self.assertFalse(fits("yuliana.pak@tumo.world", "Кабарова Нурай Ануаровна"))
+        self.assertEqual(sts._email_parts("a.b@tumo.world"), [])
+        # the master sheet has someone else's email on a student: the name in the email wins
+        a = ["Кабарова Нурай Ануаровна", "", "", "Aruzhan", "", "Самообучение", "yuliana.pak@tumo.world", "", "", []]
+        b = ["Пак Юлиана Владимировна", "", "", "Aruzhan", "", "Самообучение", "", "", "", []]
+        w = {"where": "[x]", "name": "", "email": "yuliana.pak@tumo.world", "coach": "Aruzhan Khamzina", "title": "Film",
+             "room": "", "leader": "", "time": "", "start": "", "end": "", "changed": ""}
+        sts.attach_workshops([a, b], [w])
+        self.assertEqual((a[9], b[9][0][0]), ([], "Film"))
+        self.assertIn("Кабарова", w["note"])
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path
