@@ -28,7 +28,16 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).
-- Workshops come from the workshop sheet «Workshops 26.10» (Drive file
+- **Workshops: the platform export («Лист3» in «Workshops 26.10») is the one source of truth.** Found by its
+  columns (TumoEmail, Workshop, WorkshopSchedule, StartDate, PassStatus, WithdrawDate, CoachName…); when
+  it is there, the hand-filled tabs («3d-modeling»…) are ignored. Withdrawn rows are skipped; rows with an
+  empty Workshop are skipped and logged. Matched by TumoEmail; if the email isn't in the master sheet (or
+  the master sheet has it on someone whose name doesn't fit), by the name in the email
+  (`match_by_email_name`: spelling-insensitive, initials, SL coach to break ties; only a single fit).
+  «WorkshopSchedule» «Tuesday 14:30» → «Вт, Пт 14:30–16:30»; the period ends on the Sunday of the 4th week.
+  Title on the card, room and leader per workshop come from the tab «Кабинеты и лидеры»
+  (Workshop | На карточке | Кабинет / Зона | Workshop Leader); no title there → the export's English name.
+- Older layout (used only without the export): the workshop sheet «Workshops 26.10» (Drive file
   `1E1L3mJdGASq0hkV83i5knWpXgmWNF8eO1e7HBiAcIYE`, workflow var `WORKSHOP_SHEET_FILE_ID`) and/or a
   «Воркшопы» tab in the master sheet. Header row: ФИО ученика | Почта TUMO (optional) | Воркшоп |
   Кабинет / Зона | Workshop Leader (or «Лидер воркшопа» / «Коуч») | Дни и время | Дата начала | Дата окончания | Дата изменения. One row per
