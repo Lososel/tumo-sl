@@ -346,7 +346,8 @@ class SheetToStudentsTest(unittest.TestCase):
             r("Ivan Petrov", "Robotics II", "Feb 8, 2027", "Bananas", "Working", "ivan.petrov@tumo.world"),
             r("Ivan Petrov", "Music I", "Oct 26, 2026", "Old", "Awarded", "ivan.petrov@tumo.world"),   # started
             r("Aigerim Saparova", "Music I", "Nov 24, 2026", "Beats", "Pending", "a.saparova@tumo.world"),
-            r("Diana Zhambulova", "Music I", "Nov 24, 2026", "Beats", "Rejected", "diana.zhambulova@tumo.world")]})
+            r("Diana Zhambulova", "Music I", "Nov 24, 2026", "Beats", "Rejected", "diana.zhambulova@tumo.world"),
+            r("Later Student", "Music I", "Jan 11, 2027", "Beats", "Awarded", "later.student@tumo.world")]})
         info = {"programming i": ("Программирование I", "3 этаж, WR 14", "Ахметова Дана")}
         up = sts.read_upcoming(raw, info, today=datetime.date(2026, 11, 2))
         ivan = next(w for w in up if w["email"] == "ivan.petrov@tumo.world")
@@ -355,6 +356,7 @@ class SheetToStudentsTest(unittest.TestCase):
                           "start": "2026-11-23", "end": "2026-12-20",
                           "activities": [["JS Basics", "Awarded"], ["JS Math", "Not Opened"]]})
         self.assertNotIn("360.ast", repr(up))  # the link is never kept
+        self.assertNotIn("later.student@tumo.world", [w["email"] for w in up])  # only the next cycle (23–24.11)
         rec = lambda name, email="": [name, "Вторник", "14:30-16:30", "Almas", "", "Самообучение", email, "", "", []]  # noqa: E731
         students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Сапарова Айгерим Ерлановна"),
                     rec("Сапарова Аяна Джамбуловна")]

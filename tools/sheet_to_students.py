@@ -439,8 +439,9 @@ def read_platform_export(raw):
 
 # «Upcoming»: the platform's plan of future workshops, one row per student per prerequisite activity:
 # Full Name | Schedule | Workshop | Start Date | Activity | Activity Status | Reject Count |
-# Last Submission Date | Tumo Email | Link. Only each student's next workshop (not started on `today`)
-# is kept, with its activities [[activity, status]]; the link is never published.
+# Last Submission Date | Tumo Email | Link. Only the next cycle is kept: workshops starting in the week
+# of the earliest start date after `today` (e.g. 23–24.11), with their activities [[activity, status]];
+# later ones (January…) are left out. The link is never published.
 def read_upcoming(raw, info, today=None):
     import datetime
 
@@ -471,9 +472,16 @@ def read_upcoming(raw, info, today=None):
             if act:
                 status = clean_ws(col(r, "activity status"))
                 p["acts"].append([act, "" if status.lower() == "null" else status])
+    starts = [start for by_ws in plans.values() for _, start in by_ws]
+    if not starts:
+        return []
+    first = min(starts)
+    cycle_end = first - datetime.timedelta(days=first.weekday()) + datetime.timedelta(days=6)  # that week's Sunday
     out = []
     for email, by_ws in plans.items():
         (name, start), p = min(by_ws.items(), key=lambda kv: kv[0][1])
+        if start > cycle_end:
+            continue  # the student's next workshop is in a later cycle
         title, room, leader = info.get(name.lower(), (name, "", ""))
         end = start - datetime.timedelta(days=start.weekday()) + datetime.timedelta(days=27)
         out.append({"where": p["where"], "name": "", "latin_name": p["latin_name"], "email": email, "coach": "",
