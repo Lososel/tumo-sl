@@ -193,6 +193,9 @@ def slot_from_text(text):
     return SLOT_BY_HOUR.get(m.group(1).zfill(2)) if m else None
 
 
+SUPPORT_ONLY_RE = re.compile(r"\bsupport\s+if\s+needed\b", re.I)
+
+
 def canon_coach(raw):
     # «Almas Support if needed», «Nazym Support must»: the support note is internal, the coach is the name
     s = re.sub(r"\s+support\b.*$", "", clean_ws(raw), flags=re.I)
@@ -759,8 +762,10 @@ def parse(tables, published=None, stats=None):
                 continue
             email = clean_ws(get(row, "email")).lower()
             coach, ex = canon_coach(get(row, "coach")), canon_coach(get(row, "ex"))
-            if onboarding and not coach:
-                coach, ex = ex, ""  # «4 поток»: no «Новый коуч» yet -> the onboarding coach stays, nothing changed
+            if onboarding and (not coach or SUPPORT_ONLY_RE.search(clean_ws(get(row, "coach")))):
+                # «4 поток»: no «Новый коуч» yet, or «Almas Support if needed» (Almas only helps when needed):
+                # the onboarding coach stays, nothing changed
+                coach, ex = ex, ""
             rec = [name, day, time, coach, ex, stage,
                    email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
