@@ -576,6 +576,28 @@ def match_by_email_name(email, coach, students, parts=None):
     return cands[0] if len(cands) == 1 else None
 
 
+SECOND_DAY = {"Понедельник": "Четверг", "Вторник": "Пятница"}
+
+
+def _ticked(v):
+    return v is True or clean_ws(v).lower() in ("true", "1", "да", "✓", "✔", "v", "x", "х")
+
+
+def sl_day_from_ticks(cells, pair_first):
+    """«4 поток» «День SL» ticks [first day, second day] of the student's pair -> the SL day, "" when
+    neither is ticked, "both" when both are. A day name typed into a cell counts as itself."""
+    for v in cells:
+        typed = clean_ws(v).capitalize()
+        if typed in DAYS_OK:
+            return typed
+    first, second = (_ticked(v) for v in cells)
+    if first and second:
+        return "both"
+    if first:
+        return pair_first
+    return SECOND_DAY.get(pair_first, "") if second else ""
+
+
 def stream_of(tab):
     m = STREAM_TAB_RE.match(tab or "")
     return m.group(1) if m else None
@@ -663,6 +685,15 @@ def parse(tables, published=None, stats=None):
             i = cols.get(field)
             return row[i] if i is not None and i < len(row) else None
 
+        # «4 поток» moving to self-learning (temporary, until it joins the main tabs): «День SL» is two
+        # tick columns under one header, sub-headed «Понедельник / Вторник» and «Четверг / Пятница».
+        sl_ticks = None
+        if onboarding and "day" in cols and len(rows) > 1:
+            d = cols["day"]
+            sub = [clean_ws(c).lower() if c is not None else "" for c in rows[1][d:d + 2]]
+            if len(sub) == 2 and "понедельник" in sub[0] and "четверг" in sub[1]:
+                sl_ticks = (d, d + 1)
+
         for line_no, row in enumerate(rows[1:], start=2):
             name = proper_case(fix_mixed_script(clean_ws(get(row, "name"))))
             if not name:
@@ -691,6 +722,12 @@ def parse(tables, published=None, stats=None):
                 day = "Понедельник" if "понедельник" in sched or "четверг" in sched else (
                       "Вторник" if "вторник" in sched or "пятница" in sched else sched.capitalize())
                 pair_days = set(DAYS_OK)
+                if sl_ticks:
+                    sl_day = sl_day_from_ticks([row[i] if i < len(row) else None for i in sl_ticks], day)
+                    if sl_day == "both":
+                        problems.append(f"{where}: отмечены оба дня SL — оставлен онбординг")
+                    elif sl_day:
+                        day, stage = sl_day, STAGE
             else:
                 day = clean_ws(get(row, "day")).capitalize()
             time = tab_slot or slot_from_text(get(row, "new_schedule")) or slot_from_text(get(row, "schedule"))

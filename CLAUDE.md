@@ -23,6 +23,11 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - Inactive / waitlist students keep only their name in `data/students.json`.
 - Schedule tabs `ПН ЧТ 1030` … `ВТ ПТ 1630`: the tab name is the time slot. `4 поток`, `5 поток`
   are onboarding (stage «Онбординг», card laid out like tumo-onb-app's).
+- **«4 поток» → self-learning (temporary, until those students are moved into the main tabs):** its «День SL»
+  is two tick columns sub-headed «Понедельник / Вторник» and «Четверг / Пятница». One tick + the pair in
+  «Расписание» = the SL day (e.g. «Вторник, Пятница» + second tick = Пятница); the student becomes stage
+  «Самообучение» with the SL card. No tick → still «Онбординг»; both ticks → «Онбординг» + a log line. With no
+  ex-coach the SL card shows the badge «самообучение» and no «Коуч остался прежним» note.
 - Never publish phones, IIN, birth dates, parent details or non-`@tumo.world` emails.
 - The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git.
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
