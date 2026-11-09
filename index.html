@@ -717,7 +717,7 @@
       comingSoon:'Скоро появится',
       dataLoading:'Загружаем список учеников…',
       dataError:'Не удалось загрузить список учеников. Обновите страницу или напишите нам ниже.',
-      badgeChanged:'новый коуч', badgeSame:'коуч без изменений', badgeUnknown:'уточняется',
+      badgeChanged:'новый коуч', badgeSame:'коуч без изменений', badgeSL:'самообучение', badgeUnknown:'уточняется',
       noteChanged:'Коуч изменился: занятия продолжит новый коуч, прогресс и программа ученика сохраняются.',
       noteSame:'Коуч остался прежним — меняется только день/время занятия.',
       noteWarn:'Коуч по этой группе ещё уточняется — сообщим дополнительно.',
@@ -784,7 +784,7 @@
       comingSoon:'Жақында пайда болады',
       dataLoading:'Оқушылар тізімі жүктелуде…',
       dataError:'Оқушылар тізімін жүктеу мүмкін болмады. Бетті жаңартыңыз немесе төменде бізге жазыңыз.',
-      badgeChanged:'жаңа коуч', badgeSame:'коуч өзгермеді', badgeUnknown:'нақтыланады',
+      badgeChanged:'жаңа коуч', badgeSame:'коуч өзгермеді', badgeSL:'өзіндік оқу', badgeUnknown:'нақтыланады',
       noteChanged:'Коуч ауысты: сабақты жаңа коуч жалғастырады, оқушының прогресі мен бағдарламасы сақталады.',
       noteSame:'Коуч өзгермеді — тек сабақтың күні/уақыты ауысады.',
       noteWarn:'Бұл топтың коучы әлі нақтыланып жатыр — қосымша хабарлаймыз.',
@@ -1180,6 +1180,8 @@
       // Onboarding (4 поток): no main SL day yet and no coach change to report.
       const onboarding = r.stage === ONBOARDING;
       const changed = !onboarding && r.c && r.ex && r.c !== r.ex;
+      // no ex-coach: a student who joined self-learning straight from onboarding («4 поток»), no coach change to report
+      const fresh = !onboarding && r.c && !r.ex;
       const noCoach = !r.c;
       const email = coachEmail(r.c);
       const gKey = groupKeyFor(r.d, r.t);
@@ -1208,7 +1210,7 @@
       const inWorkshop = !!StudentData.workshopTimeline(r, now, 14).current;
       card.innerHTML = `
         ${workshopBadge(r)
-          || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : t('badgeSame'))}</span>`}
+          || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : (fresh ? t('badgeSL') : t('badgeSame')))}</span>`}
         <h3>${escapeHtml(r.n)}${headActionsHtml(r)}</h3>
         ${activeWorkshopHtml(r)}
         ${inWorkshop ? `<div class="ws-only" role="status">${t('ws').onlyWorkshop(StudentData.classResumes(r, now))}</div>` : ''}
@@ -1240,7 +1242,7 @@
         </div>
         ${noCoach
           ? `<div class="note warn">${t('noteWarn')}</div>`
-          : (onboarding || inWorkshop ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
+          : (onboarding || inWorkshop || fresh ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
         }
         ${workshopSectionHtml(r) || (inWorkshop ? '' : `<div class="note info">${t('noteWorkshop')}</div>`)}
         ${group ? `

@@ -374,6 +374,27 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual([w[0] for w in amir[9]], ["alibaev.amir@tumo.world"])
         self.assertEqual([w["email"] for w in unmatched], ["amira.alibaeva@tumo.world"])
 
+    def test_stream_4_students_with_an_sl_day_move_to_self_learning(self):
+        hdr = ["", "Номер родителя", "почта родителя", "ФИО ребенка", "Номер ребенка", "ДР ребенка", "Расписание",
+               "День SL", None, "Коуч ", None, "Зона обучения", "Почта тумо"]
+        sub = [None] * 7 + ["Понедельник\nВторник", "Четверг\nПятница"] + [None] * 4
+        r = lambda name, sched, first, second: [None, "", "", name, "", "", sched, first, second, "Ayaulym", None,  # noqa: E731
+                                               "3 этаж, 7 WR", ""]
+        tab = [hdr, sub, ["Понедельник, Четверг : 10:30–12:30"] + [None] * 12,
+               r("Иван Петров", "Понедельник, Четверг : 10:30–12:30", True, None),
+               r("Анна Смирнова", "Вторник, Пятница : 14:30–16:30", None, True),
+               r("Без Дня", "Вторник, Пятница : 16:30–18:30", None, None),
+               r("Оба Дня", "Понедельник, Четверг : 10:30–12:30", True, True),
+               r("Текстом Записан", "Понедельник, Четверг : 10:30–12:30", "Понедельник", None)]
+        students, problems = sts.parse([("4 поток", tab)])
+        got = {s[0]: (s[1], s[2], s[5]) for s in students}
+        self.assertEqual(got["Иван Петров"], ("Понедельник", "10:30-12:30", "Самообучение"))
+        self.assertEqual(got["Анна Смирнова"], ("Пятница", "14:30-16:30", "Самообучение"))
+        self.assertEqual(got["Без Дня"][2], "Онбординг")
+        self.assertEqual(got["Оба Дня"][2], "Онбординг")
+        self.assertEqual(got["Текстом Записан"], ("Понедельник", "10:30-12:30", "Самообучение"))
+        self.assertTrue(any("оба дня SL" in p for p in problems))
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path
