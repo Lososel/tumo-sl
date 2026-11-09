@@ -164,6 +164,9 @@ HEADERS = {
     "фио ребёнка": "name",
     "день sl": "day",
     "новый коуч sl": "coach",
+    "новый коуч": "coach",
+    # «4 поток»: the onboarding coach, «Eх-Коуч OB» (the «E» may be Latin or Cyrillic)
+    "eх-коуч": "ex", "ех-коуч": "ex", "ex-коуч": "ex", "ex коуч": "ex", "ех коуч": "ex",
     "коуч": "coach",
     "ex-coach": "ex",
     "почта tumo": "email",
@@ -191,7 +194,8 @@ def slot_from_text(text):
 
 
 def canon_coach(raw):
-    s = clean_ws(raw)
+    # «Almas Support if needed», «Nazym Support must»: the support note is internal, the coach is the name
+    s = re.sub(r"\s+support\b.*$", "", clean_ws(raw), flags=re.I)
     return CYR_TO_LATIN_COACH.get(s.lower(), proper_case(s)) if s else ""
 
 
@@ -754,7 +758,10 @@ def parse(tables, published=None, stats=None):
                 problems.append(f"{where}: время не распознано")
                 continue
             email = clean_ws(get(row, "email")).lower()
-            rec = [name, day, time, canon_coach(get(row, "coach")), canon_coach(get(row, "ex")), stage,
+            coach, ex = canon_coach(get(row, "coach")), canon_coach(get(row, "ex"))
+            if onboarding and not coach:
+                coach, ex = ex, ""  # «4 поток»: no «Новый коуч» yet -> the onboarding coach stays, nothing changed
+            rec = [name, day, time, coach, ex, stage,
                    email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})

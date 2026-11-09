@@ -28,6 +28,9 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   «Расписание» = the SL day (e.g. «Вторник, Пятница» + second tick = Пятница); the student becomes stage
   «Самообучение» with the SL card. No tick → still «Онбординг»; both ticks → «Онбординг» + a log line. With no
   ex-coach the SL card shows the badge «самообучение» and no «Коуч остался прежним» note.
+  Coach: «Новый коуч» (a note like «Support if needed / Support must» is dropped; «Aruzhan Kh» = Аружан
+  Хамзина) with «Eх-Коуч OB» (the onboarding coach) as ex-coach → badge «новый коуч»; no «Новый коуч» →
+  the onboarding coach, no ex-coach.
 - Never publish phones, IIN, birth dates, parent details or non-`@tumo.world` emails.
 - The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git.
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.

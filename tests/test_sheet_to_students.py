@@ -421,6 +421,20 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual(got["Текстом Записан"], ("Понедельник", "10:30-12:30", "Самообучение"))
         self.assertTrue(any("оба дня SL" in p for p in problems))
 
+    def test_stream_4_new_coach_column(self):
+        hdr = ["", "Номер родителя", "почта родителя", "ФИО ребенка", "Номер ребенка", "ДР ребенка", "Расписание",
+               "День SL", None, "Eх-Коуч OB", "Новый коуч", "Зона обучения", "Почта тумо"]
+        sub = [None] * 7 + ["Понедельник\nВторник", "Четверг\nПятница"] + [None] * 4
+        r = lambda name, ob, new: [None, "", "", name, "", "", "Понедельник, Четверг : 10:30–12:30", True, None, ob, new,  # noqa: E731
+                                   "3 этаж, 7 WR", ""]
+        students, _ = sts.parse([("4 поток", [hdr, sub, r("Иван Петров", "Ayaulym", "Almas Support if needed"),
+                                                     r("Анна Смирнова", "Alen", None),
+                                                     r("Олег Иванов", "Danel", "Aruzhan Kh")])])
+        got = {s[0]: (s[3], s[4]) for s in students}
+        self.assertEqual(got["Иван Петров"], ("Almas", "Ayaulym"))     # new coach, the onboarding coach as ex
+        self.assertEqual(got["Анна Смирнова"], ("Alen", ""))           # no new coach yet
+        self.assertEqual(got["Олег Иванов"], ("Aruzhan", "Danel"))     # «Aruzhan Kh» = Аружан Хамзина
+
     def test_workshops_survive_save_and_load(self):
         import tempfile
         from pathlib import Path

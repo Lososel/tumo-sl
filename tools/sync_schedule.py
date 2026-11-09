@@ -52,6 +52,7 @@ CYR_TO_LATIN_COACH = {
     "аружан т": "Aruzhan Torebek",
     "аружан торебек": "Aruzhan Torebek",
     "aruzhan t": "Aruzhan Torebek",
+    "aruzhan kh": "Aruzhan", "aruzhan k": "Aruzhan", "aruzhan khamzina": "Aruzhan",
     "аяулым": "Ayaulym",
     "ален": "Alen",
     "данел": "Danel",
