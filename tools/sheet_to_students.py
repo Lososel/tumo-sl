@@ -193,7 +193,8 @@ def slot_from_text(text):
     return SLOT_BY_HOUR.get(m.group(1).zfill(2)) if m else None
 
 
-SUPPORT_ONLY_RE = re.compile(r"\bsupport\s+if\s+needed\b", re.I)
+# «Almas Support if needed», «Nazym Support must»: that person only supports, the coach doesn't change
+SUPPORT_ONLY_RE = re.compile(r"\bsupport\b", re.I)
 
 
 def canon_coach(raw):
@@ -763,8 +764,8 @@ def parse(tables, published=None, stats=None):
             email = clean_ws(get(row, "email")).lower()
             coach, ex = canon_coach(get(row, "coach")), canon_coach(get(row, "ex"))
             if onboarding and (not coach or SUPPORT_ONLY_RE.search(clean_ws(get(row, "coach")))):
-                # «4 поток»: no «Новый коуч» yet, or «Almas Support if needed» (Almas only helps when needed):
-                # the onboarding coach stays, nothing changed
+                # «4 поток»: no «Новый коуч» yet, or «Almas Support if needed / Support must» (Almas only
+                # supports): the onboarding coach stays, nothing changed
                 coach, ex = ex, ""
             rec = [name, day, time, coach, ex, stage,
                    email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]

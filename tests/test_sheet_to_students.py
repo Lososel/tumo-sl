@@ -429,11 +429,13 @@ class SheetToStudentsTest(unittest.TestCase):
                                    "3 этаж, 7 WR", ""]
         students, _ = sts.parse([("4 поток", [hdr, sub, r("Иван Петров", "Ayaulym", "Almas Support if needed"),
                                                      r("Пётр Сидоров", "Ayaulym", "Elmira"),
+                                                     r("Мария Ли", "Tahmina", "Nazym Support must"),
                                                      r("Анна Смирнова", "Alen", None),
                                                      r("Олег Иванов", "Danel", "Aruzhan Kh")])])
         got = {s[0]: (s[3], s[4]) for s in students}
         self.assertEqual(got["Иван Петров"], ("Ayaulym", ""))         # «Support if needed»: the coach stays
         self.assertEqual(got["Пётр Сидоров"], ("Elmira", "Ayaulym"))  # new coach, the onboarding coach as ex
+        self.assertEqual(got["Мария Ли"], ("Tahmina", ""))            # «Support must»: the coach stays too
         self.assertEqual(got["Анна Смирнова"], ("Alen", ""))           # no new coach yet
         self.assertEqual(got["Олег Иванов"], ("Aruzhan", "Danel"))     # «Aruzhan Kh» = Аружан Хамзина
 
