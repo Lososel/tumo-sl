@@ -42,6 +42,10 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   «WorkshopSchedule» «Tuesday 14:30» → «Вт, Пт 14:30–16:30»; the period ends on the Sunday of the 4th week.
   Title on the card, room and leader per workshop come from the tab «Кабинеты и лидеры»
   (Workshop | На карточке | Кабинет / Зона | Workshop Leader); no title there → the export's English name.
+- **Every** export tab in «Workshops 26.10» is read («Лист3» = the running cycle, «Записи 23.11» = the next cycle's
+  enrollments): rows that have started are the current workshop, rows starting after today are the next one.
+  When a next-cycle enrollment exists it is the «Следующий воркшоп»; «Upcoming» then only adds the activities
+  for the same student and workshop. Only without enrollments is «Upcoming»'s own plan used.
 - **Upcoming workshops: the «Upcoming» tab** (platform export: Full Name | Schedule | Workshop | Start Date |
   Activity | Activity Status | Reject Count | Last Submission Date | Tumo Email | Link; one row per student per
   prerequisite activity, the plan through the year). The sync keeps only the next cycle — workshops starting in the

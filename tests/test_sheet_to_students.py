@@ -365,6 +365,32 @@ class SheetToStudentsTest(unittest.TestCase):
                          [[["JS Basics", "Awarded"], ["JS Math", "Not Opened"]], [["Beats", "Pending"]], None])
         self.assertEqual([w["email"] for w in unmatched], ["diana.zhambulova@tumo.world"])  # not her patronymic
 
+    def test_next_cycle_enrollment_is_the_upcoming_workshop(self):
+        import datetime
+        hdr = ["Location", "Year", "Month", "StartDate", "Workshop", "UserName Link", "WorkshopSchedule",
+               "StudentSchedule", "AppliedStatus", "TumoEmail", "TumoID", "Attendance", "PassStatus", "Star",
+               "WithdrawDate", "Comment", "CoachName"]
+        row_ = lambda start, ws, sched, email: ["Astana", "2026", "", start, ws, email.split("@")[0], sched, sched,  # noqa: E731
+                                               "Approved", email, "1", "", "null", "false", "null", "null", "Almas"]
+        up_hdr = ["Full Name", "Schedule", "Workshop", "Start Date", "Activity", "Activity Status", "Reject Count",
+                  "Last Submission Date", "Tumo Email", "Link"]
+        raw = xlsx({
+            "Лист3": [hdr, row_("Oct 27, 2026", "3D Modeling I", "Tuesday 14:30", "ivan.petrov@tumo.world")],
+            "Записи 23.11": [hdr, row_("Nov 24, 2026", "Robotics I", "Tuesday 14:30", "ivan.petrov@tumo.world"),
+                             row_("Nov 23, 2026", "", "Monday 14:30", "no.title@tumo.world")],
+            "Upcoming": [up_hdr,
+                         ["Ivan Petrov", "Tuesday 14:30", "Robotics I", "Nov 24, 2026", "Bananas", "Awarded", "", "", "ivan.petrov@tumo.world", ""],
+                         ["Ivan Petrov", "Tuesday 14:30", "Music I", "Nov 24, 2026", "Beats", "Working", "", "", "ivan.petrov@tumo.world", ""]],
+            "Кабинеты и лидеры": [["Workshop", "На карточке", "Кабинет / Зона", "Workshop Leader"],
+                                  ["Robotics I", "Робототехника I", "2 этаж, WR 1", "Бердиходжаев Адилбек"]]})
+        today = datetime.date(2026, 11, 9)
+        rows, info = sts.read_platform_export(raw, today)
+        self.assertEqual([(r["key"], r["next"]) for r in rows],
+                         [("3d modeling i", False), ("robotics i", True), ("", True)])
+        up = sts.read_upcoming(raw, info, today, enrolled=[r for r in rows if r["next"] and r["title"]])
+        self.assertEqual([(w["title"], w["room"], w["start"], w["activities"]) for w in up],
+                         [("Робототехника I", "2 этаж, WR 1", "2026-11-24", [["Bananas", "Awarded"]])])  # not Music I
+
     def test_a_student_found_by_email_is_not_claimed_by_another_email(self):
         rec = lambda name, email: [name, "", "", "Aruzhan", "", "Самообучение", email, "", "", []]  # noqa: E731
         amir = rec("Алибаев Амир Нурболұлы", "alibaev.amir@tumo.world")

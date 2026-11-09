@@ -383,12 +383,14 @@ def _header_index(header):
     return {clean_ws(c).lower(): i for i, c in enumerate(header) if clean_ws(c)}
 
 
-def read_platform_export(raw):
-    """xlsx bytes -> (rows, info) from the platform export tab and the «Кабинеты и лидеры» tab.
+def read_platform_export(raw, today=None):
+    """xlsx bytes -> (rows, info) from every platform export tab («Лист3», «Записи 23.11»…) and the
+    «Кабинеты и лидеры» tab.
 
-    rows: [{where, email, coach, title, room, leader, time, start, end, changed, name}] for every
-    student who hasn't withdrawn; title/room/leader come from the info tab (title falls back to the
-    export's English name). The period ends on the Sunday of the 4th week (26.10 -> 22.11).
+    rows: [{where, email, coach, title, room, leader, time, start, end, changed, name, key, next}] for
+    every student who hasn't withdrawn; title/room/leader come from the info tab (title falls back to
+    the export's English name `key`). next = the workshop starts after `today` (an enrollment for the
+    next cycle, e.g. the 23.11 report). The period ends on the Sunday of the 4th week (26.10 -> 22.11).
     info: {export workshop name: (title, room, leader)}. ([], {}) when there is no export tab."""
     import datetime
 
@@ -396,15 +398,16 @@ def read_platform_export(raw):
         return [], {}
     import openpyxl
 
+    today = today or datetime.date.today()
     wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
-    export, info = None, {}
+    exports, info = [], {}
     for ws in wb.worksheets:
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
             continue
         h = _header_index(rows[0])
         if {"tumoemail", "workshop", "workshopschedule"} <= set(h):
-            export = (ws.title, h, rows[1:])
+            exports.append((ws.title, h, rows[1:]))
         elif "workshop" in h and any(k.startswith("кабинет") for k in h):
             room_col = next(i for k, i in h.items() if k.startswith("кабинет"))
             lead_col = next((i for k, i in h.items() if "leader" in k or "лидер" in k), None)
@@ -414,9 +417,15 @@ def read_platform_export(raw):
                 cell = lambda i: clean_ws(r[i]) if i is not None and i < len(r) else ""  # noqa: E731
                 if key:
                     info[key.lower()] = (cell(title_col) or key, cell(room_col), canon_coach(cell(lead_col)))
-    if export is None:
-        return [], info
-    tab, h, body = export
+    out = []
+    for tab, h, body in exports:
+        out += _export_rows(tab, h, body, info, today)
+    return out, info
+
+
+def _export_rows(tab, h, body, info, today):
+    import datetime
+
     col = lambda r, k: r[h[k]] if k in h and h[k] < len(r) else None  # noqa: E731
     out = []
     for line_no, r in enumerate(body, start=2):
@@ -433,8 +442,9 @@ def read_platform_export(raw):
         out.append({"where": f"[{tab}:{line_no}]", "name": "", "email": email,
                     "coach": clean_ws(col(r, "coachname")), "title": title, "room": room, "leader": leader,
                     "time": _export_time(col(r, "workshopschedule")),
-                    "start": start.isoformat() if start else "", "end": end.isoformat() if end else "", "changed": ""})
-    return out, info
+                    "start": start.isoformat() if start else "", "end": end.isoformat() if end else "", "changed": "",
+                    "key": name.lower(), "next": bool(start and start > today)})
+    return out
 
 
 # «Upcoming»: the platform's plan of future workshops, one row per student per prerequisite activity:
@@ -442,7 +452,10 @@ def read_platform_export(raw):
 # Last Submission Date | Tumo Email | Link. Only the next cycle is kept: workshops starting in the week
 # of the earliest start date after `today` (e.g. 23–24.11), with their activities [[activity, status]];
 # later ones (January…) are left out. The link is never published.
-def read_upcoming(raw, info, today=None):
+def read_upcoming(raw, info, today=None, enrolled=None):
+    """-> the next workshop per student. With enrolled (the export rows of the next cycle, e.g. the
+    23.11 report) those are the next workshops and «Upcoming» only adds each one's activities (same
+    student, same workshop); without them, «Upcoming»'s plan for the next cycle is used."""
     import datetime
 
     if raw[:2] != b"PK":
@@ -472,6 +485,9 @@ def read_upcoming(raw, info, today=None):
             if act:
                 status = clean_ws(col(r, "activity status"))
                 p["acts"].append([act, "" if status.lower() == "null" else status])
+    if enrolled:
+        acts = {(email, name.lower()): p["acts"] for email, by_ws in plans.items() for (name, _), p in by_ws.items()}
+        return [dict(w, activities=sorted(acts.get((w["email"], w["key"]), []))) for w in enrolled]
     starts = [start for by_ws in plans.values() for _, start in by_ws]
     if not starts:
         return []
@@ -790,8 +806,10 @@ def main():
     for extra in args.workshops:
         if Path(extra).exists():
             rows_, info = read_platform_export(Path(extra).read_bytes())
-            export_rows += rows_
-            upcoming_rows += read_upcoming(Path(extra).read_bytes(), info)
+            export_rows += [w for w in rows_ if not w["next"]]
+            enrolled = [w for w in rows_ if w["next"]]
+            problems += [f"{w['where']} пустое поле Workshop — пропущено: {w['email']}" for w in enrolled if not w["title"]]
+            upcoming_rows += read_upcoming(Path(extra).read_bytes(), info, enrolled=[w for w in enrolled if w["title"]])
     if export_rows:
         workshop_rows = [w for w in export_rows if w["title"]]
         print(f"Воркшопы из выгрузки платформы: {len(export_rows)} учеников (без отказавшихся)")
