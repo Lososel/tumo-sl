@@ -83,6 +83,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   rather than guess.
   The workshop block shows the leader's email (`WORKSHOP_LEADERS` in `js/student-data.js`, matched by
   surname or first name, Cyrillic or Latin); add a new leader there.
+- **Workshop blocks are hidden on the site for now** (`SHOW_WORKSHOPS = false` in `index.html`): no workshop
+  blocks, badges, alerts or «Воркшоп» stage; the data still syncs. Set it to `true` to show them again.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last
