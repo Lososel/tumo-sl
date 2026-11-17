@@ -413,7 +413,9 @@ class SheetToStudentsTest(unittest.TestCase):
         ]})
         info = {"robotics i": ("Робототехника I", "2 этаж, WR 1", "Бердиходжаев Адилбек")}
         rows = sts.read_december_groups(raw, info, today=datetime.date(2026, 11, 17))
-        self.assertEqual([(r["latin_name"], r["email"], r["title"], r["room"], r["time"], r["start"], r["end"]) for r in rows], [
+        self.assertEqual([r["latin_name"] for r in rows if r["waitlist"]], ["Wait Ing"])
+        self.assertEqual([(r["latin_name"], r["email"], r["title"], r["room"], r["time"], r["start"], r["end"])
+                          for r in rows if not r["waitlist"]], [
             ("Ivan Petrov", "ivan.petrov@tumo.world", "Робототехника I", "2 этаж, WR 1", "Пн, Чт 10:30–12:30",
              "2026-11-23", "2026-12-20"),
             ("Abay Kumisbek", "", "Робототехника I", "2 этаж, WR 1", "Пн, Чт 10:30–12:30", "2026-11-23", "2026-12-20"),
@@ -422,8 +424,15 @@ class SheetToStudentsTest(unittest.TestCase):
         rec = lambda name, email="": [name, "Вторник", "10:30-12:30", "Almas", "", "Самообучение", email, "", "", []]  # noqa: E731
         students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Кумисбек Абай Ерланұлы"),
                     rec("Смирнова Анна")]
-        self.assertEqual(sts.attach_workshops(students, rows), [])
+        self.assertEqual(sts.attach_workshops(students, [r for r in rows if not r["waitlist"]]), [])
         self.assertEqual([s[9][0][0] for s in students], ["Робототехника I", "Робототехника I", "Music II"])
+        # on a waiting list anywhere: no upcoming workshop, even with an enrollment in another group
+        wait = rec("Ингов Вэйт", "wait.ing@tumo.world")
+        both = [dict(r, email="wait.ing@tumo.world") for r in rows if r["latin_name"] in ("Ivan Petrov", "Wait Ing")]
+        sts.attach_workshops([wait], both)
+        self.assertEqual(len(wait[9]), 1)
+        sts.drop_waitlisted([wait], both)
+        self.assertEqual(wait[9], [])
 
     def test_a_student_found_by_email_is_not_claimed_by_another_email(self):
         rec = lambda name, email: [name, "", "", "Aruzhan", "", "Самообучение", email, "", "", []]  # noqa: E731

@@ -520,16 +520,19 @@ def read_upcoming(raw, info, today=None, enrolled=None):
 # «Декабрь по группам»: the next cycle's groups as checked against the platform, one table per workshop
 # and slot. A workshop title row (e.g. «3D Modeling II» | «Пн/Чт 10:30»), then «ФИО | Username | Ссылка (360) |
 # Коуч | Можно убрать / куда | Пререквизиты | Остаётся» and one student per row; tables sit side by side
-# (7 columns each). Candidates («перевести сюда…»), the waiting list and closing groups are not enrolled.
+# (7 columns each). Candidates («перевести сюда…») and closing groups are not enrolled; a student on any
+# workshop's waiting list gets no upcoming workshop at all.
 # The period is in the tab's first cell: «Декабрь (23.11–20.12)…» (Пн/Чт start on 23.11, Вт/Пт a day later).
 DECEMBER_TAB_RE = re.compile(r"по\s*группам", re.I)
 SLOT_RE = re.compile(r"^(Пн/Чт|Вт/Пт)\s+(\d{1,2}):(\d{2})")
-NOT_ENROLLED_RE = re.compile(r"^\s*перевести\s+сюда|waiting\s*list|лист\s+ожидания|to\s+be\s+moved|не\s+хочет", re.I)
+WAITLIST_RE = re.compile(r"waiting\s*list|лист\s+ожидания", re.I)
+NOT_ENROLLED_RE = re.compile(r"^\s*перевести\s+сюда|to\s+be\s+moved|не\s+хочет", re.I)
 
 
 def read_december_groups(raw, info=None, today=None):
-    """xlsx bytes -> [{where, email, latin_name, coach, title, room, leader, time, start, end, changed, key}]
-    for every enrolled student of the «Декабрь по группам» tab ([] when there is none)."""
+    """xlsx bytes -> [{where, email, latin_name, coach, title, room, leader, time, start, end, changed, key,
+    waitlist}] for every enrolled or waitlisted student of the «Декабрь по группам» tab ([] when there is
+    none). waitlist: the row is on a workshop's waiting list — such a student gets no upcoming workshop."""
     import datetime
 
     if raw[:2] != b"PK":
@@ -573,14 +576,24 @@ def read_december_groups(raw, info=None, today=None):
                     continue
                 if not name or NOT_ENROLLED_RE.search(cell(j, c + 4)):
                     continue
+                waitlist = bool(WAITLIST_RE.search(cell(j, c + 4)))
                 user = cell(j, c + 1).lower()
                 email = f"{user}@tumo.world" if re.fullmatch(r"[a-z0-9._%+-]+", user) else ""
                 out.append({"where": f"[{ws.title}:{j + 1}]", "name": "", "email": email, "latin_name": name,
                             "coach": cell(j, c + 3), "title": t, "room": room, "leader": leader,
                             "time": f"{days[0]}, {days[1]} {h:02d}:{mm}–{h + 2:02d}:{mm}",
                             "start": day0.isoformat(), "end": end.isoformat(), "changed": "",
-                            "key": title.lower()})
+                            "key": title.lower(), "waitlist": waitlist})
     return out
+
+
+def drop_waitlisted(students, workshop_rows):
+    """A student on a workshop's waiting list («Декабрь по группам») gets no upcoming workshop at all."""
+    names = {w["student"] for w in workshop_rows if w.get("waitlist") and w.get("student")}
+    for s in students:
+        if s[0] in names:
+            s[9][:] = []
+    return names
 
 
 LATIN = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюяәғқңөұүһі",
@@ -921,6 +934,7 @@ def main():
                     w.pop("activities", None)
             print(f"Воркшопы из «Декабрь по группам»: {len(dec)} учеников (только следующий воркшоп)")
     unmatched = attach_workshops(students, workshop_rows)
+    drop_waitlisted(students, workshop_rows)
     if workshop_rows:
         print(f"Воркшопы: {len(workshop_rows)} строк, найдено учеников: {len(workshop_rows) - len(unmatched)}")
         for w in unmatched:
