@@ -413,7 +413,7 @@ class SheetToStudentsTest(unittest.TestCase):
         ]})
         info = {"robotics i": ("Робототехника I", "2 этаж, WR 1", "Бердиходжаев Адилбек")}
         rows = sts.read_december_groups(raw, info, today=datetime.date(2026, 11, 17))
-        self.assertEqual([r["latin_name"] for r in rows if r["waitlist"]], ["Wait Ing"])
+        self.assertEqual([r["latin_name"] for r in rows if r["waitlist"]], ["Candidate One", "Wait Ing"])
         self.assertEqual([(r["latin_name"], r["email"], r["title"], r["room"], r["time"], r["start"], r["end"])
                           for r in rows if not r["waitlist"]], [
             ("Ivan Petrov", "ivan.petrov@tumo.world", "Робототехника I", "2 этаж, WR 1", "Пн, Чт 10:30–12:30",
