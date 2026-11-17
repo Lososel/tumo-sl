@@ -525,8 +525,9 @@ def read_upcoming(raw, info, today=None, enrolled=None):
 # The period is in the tab's first cell: «Декабрь (23.11–20.12)…» (Пн/Чт start on 23.11, Вт/Пт a day later).
 DECEMBER_TAB_RE = re.compile(r"по\s*группам", re.I)
 SLOT_RE = re.compile(r"^(Пн/Чт|Вт/Пт)\s+(\d{1,2}):(\d{2})")
-WAITLIST_RE = re.compile(r"waiting\s*list|лист\s+ожидания", re.I)
-NOT_ENROLLED_RE = re.compile(r"^\s*перевести\s+сюда|to\s+be\s+moved|не\s+хочет", re.I)
+# waiting list = anyone being moved («перевести сюда (добавить в …)», «перевести на …», «to be moved», «waiting list»)
+WAITLIST_RE = re.compile(r"waiting\s*list|лист\s+ожидания|to\s+be\s+moved|перевести", re.I)
+NOT_ENROLLED_RE = re.compile(r"не\s+хочет", re.I)
 
 
 def read_december_groups(raw, info=None, today=None):

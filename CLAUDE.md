@@ -86,8 +86,9 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - **«Декабрь по группам» is the workshop source when it downloads** (tab of «Actual Elmira Attendance all»,
   file `12ElbRcHplgALfzzEXprFCAzjE51z19zrUH7zBiBXmCc`, workflow var `DECEMBER_SHEET_FILE_ID`, `--december`):
   tables side by side, 7 columns each (ФИО | Username | Ссылка (360) | Коуч | Можно убрать / куда | Пререквизиты |
-  Остаётся) under a title row «<workshop> | Пн/Чт 10:30». Rows noted «перевести сюда…», «waiting list», «to be
-  moved», «не хочет» and groups marked «закрывается» are not enrolled; a student on any group's «waiting list» / «лист ожидания» gets no upcoming workshop at all (`drop_waitlisted`), even if enrolled elsewhere. Dates from the tab's first cell «Декабрь
+  Остаётся) under a title row «<workshop> | Пн/Чт 10:30». Rows noted «не хочет» and groups marked «закрывается» are not enrolled. Waiting list = anyone being
+  moved («перевести сюда (добавить в …)», «перевести на …», «to be moved», «waiting list»): such a student gets no
+  upcoming workshop at all (`drop_waitlisted`), even if enrolled in another group. Dates from the tab's first cell «Декабрь
   (23.11–20.12)» (Вт/Пт a day later). Matched by username@tumo.world, else by the Latin name; activities from
   «Upcoming»; room/leader/title from «Кабинеты и лидеры». The link column is never published.
 - **The site shows only the upcoming workshop** (`SHOW_WORKSHOPS = 'next'` in `index.html`): the «Следующий
