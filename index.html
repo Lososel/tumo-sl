@@ -894,6 +894,12 @@
   }
 
   // ---------- workshop block, card actions, share links, saved students ----------
+  // Workshop blocks are switched off for now: no workshop cards, badges or alerts, and the card keeps
+  // its normal SL schedule and stage. Set to true to show them again (the data still syncs).
+  const SHOW_WORKSHOPS = false;
+  function wsTimeline(r, now, days){
+    return SHOW_WORKSHOPS ? StudentData.workshopTimeline(r, now, days) : {};
+  }
   const SAVED_KEY = 'tumo-saved-students';
   function loadSaved(){ try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch { return []; } }
   function storeSaved(ids){ try { localStorage.setItem(SAVED_KEY, JSON.stringify(ids)); } catch {} }
@@ -944,12 +950,12 @@
   }
   // The running workshop: shown first on the card, highlighted.
   function activeWorkshopHtml(r){
-    const tl = StudentData.workshopTimeline(r, new Date(), 14);
+    const tl = wsTimeline(r, new Date(), 14);
     return tl.current ? workshopBlockHtml(r, tl.current, t('ws').current, 'ws-active') : '';
   }
   // Alerts and the next workshop (below the class facts).
   function workshopSectionHtml(r){
-    const tl = StudentData.workshopTimeline(r, new Date(), 14);
+    const tl = wsTimeline(r, new Date(), 14);
     const w = t('ws');
     const alerts = [];
     if(tl.nextSoon) alerts.push(w.soon(isoToDate(tl.next.start), escapeHtml(tl.next.title)));
@@ -962,7 +968,7 @@
   }
   // the badge in the card's corner: the most urgent workshop news, else «Воркшоп» while one runs
   function workshopBadge(r){
-    const tl = StudentData.workshopTimeline(r, new Date(), 14);
+    const tl = wsTimeline(r, new Date(), 14);
     if(tl.nextSoon) return `<span class="badge ws-changed">${t('ws').badgeSoon}</span>`;
     if(tl.changed) return `<span class="badge ws-changed">${t('ws').badge}</span>`;
     if(tl.current) return `<span class="badge ws-on">${t('ws').badgeOn}</span>`;
@@ -977,7 +983,7 @@
 
   // Footer: add the class to Google Calendar. While a workshop runs, the workshop block has the button instead.
   function actionsHtml(r){
-    if(StudentData.workshopTimeline(r, new Date(), 14).current) return '';
+    if(wsTimeline(r, new Date(), 14).current) return '';
     const google = StudentData.googleCalendarUrl(r, calendarOpts(r));
     return google ? `
       <div class="card-actions">
@@ -1207,7 +1213,7 @@
       }
       // during a workshop the student doesn't attend self-learning: stage «Воркшоп», SL schedule paused
       const now = new Date();
-      const inWorkshop = !!StudentData.workshopTimeline(r, now, 14).current;
+      const inWorkshop = !!wsTimeline(r, now, 14).current;
       card.innerHTML = `
         ${workshopBadge(r)
           || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : (fresh ? t('badgeSL') : t('badgeSame')))}</span>`}
@@ -1233,7 +1239,7 @@
           </div>
           <div>
             <div class="fact-label">${t('factStage')}</div>
-            <div class="fact-value">${escapeHtml(trStage(StudentData.effectiveStage(r, now))) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(trStage(SHOW_WORKSHOPS ? StudentData.effectiveStage(r, now) : r.stage)) || t('comingSoon')}</div>
           </div>
           ${r.room ? `<div>
             <div class="fact-label">${t('factRoom')}</div>
