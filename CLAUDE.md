@@ -83,8 +83,16 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   rather than guess.
   The workshop block shows the leader's email (`WORKSHOP_LEADERS` in `js/student-data.js`, matched by
   surname or first name, Cyrillic or Latin); add a new leader there.
-- **Workshop blocks are hidden on the site for now** (`SHOW_WORKSHOPS = false` in `index.html`): no workshop
-  blocks, badges, alerts or «Воркшоп» stage; the data still syncs. Set it to `true` to show them again.
+- **«Декабрь по группам» is the workshop source when it downloads** (tab of «Actual Elmira Attendance all»,
+  file `12ElbRcHplgALfzzEXprFCAzjE51z19zrUH7zBiBXmCc`, workflow var `DECEMBER_SHEET_FILE_ID`, `--december`):
+  tables side by side, 7 columns each (ФИО | Username | Ссылка (360) | Коуч | Можно убрать / куда | Пререквизиты |
+  Остаётся) under a title row «<workshop> | Пн/Чт 10:30». Rows noted «перевести сюда…», «waiting list», «to be
+  moved», «не хочет» and groups marked «закрывается» are not enrolled. Dates from the tab's first cell «Декабрь
+  (23.11–20.12)» (Вт/Пт a day later). Matched by username@tumo.world, else by the Latin name; activities from
+  «Upcoming»; room/leader/title from «Кабинеты и лидеры». The link column is never published.
+- **The site shows only the upcoming workshop** (`SHOW_WORKSHOPS = 'next'` in `index.html`): the «Следующий
+  воркшоп» block with its «скоро» alert and badge; no running workshop, no «Воркшоп» stage, the SL schedule stays.
+  `false` hides all workshop blocks, `true` shows current and next.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last

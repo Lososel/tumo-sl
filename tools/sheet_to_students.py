@@ -337,6 +337,8 @@ def attach_workshops(students, workshop_rows):
                     w["note"] = f"почта {w['email']} не похожа на имя «{s[0]}» — проверьте почту в главной таблице"
             if s is None and w.get("latin_name"):  # «Upcoming» also has the name in Latin
                 s = name_match(w, [p for p in re.split(r"[\s\-]+", w["latin_name"].lower()) if p])
+        elif not w["email"] and not w["name"] and w.get("latin_name"):  # «Декабрь по группам» without a username
+            s = name_match(w, [p for p in re.split(r"[\s\-]+", w["latin_name"].lower()) if p])
         if s is None and w["name"]:
             same = by_name.get(norm(w["name"]), [])
             if len(same) == 1:
@@ -512,6 +514,72 @@ def read_upcoming(raw, info, today=None, enrolled=None):
                     "title": title, "room": room, "leader": leader, "time": _export_time(p["schedule"]),
                     "start": start.isoformat(), "end": end.isoformat(), "changed": "",
                     "activities": sorted(p["acts"])})
+    return out
+
+
+# «Декабрь по группам»: the next cycle's groups as checked against the platform, one table per workshop
+# and slot. A workshop title row (e.g. «3D Modeling II» | «Пн/Чт 10:30»), then «ФИО | Username | Ссылка (360) |
+# Коуч | Можно убрать / куда | Пререквизиты | Остаётся» and one student per row; tables sit side by side
+# (7 columns each). Candidates («перевести сюда…»), the waiting list and closing groups are not enrolled.
+# The period is in the tab's first cell: «Декабрь (23.11–20.12)…» (Пн/Чт start on 23.11, Вт/Пт a day later).
+DECEMBER_TAB_RE = re.compile(r"по\s*группам", re.I)
+SLOT_RE = re.compile(r"^(Пн/Чт|Вт/Пт)\s+(\d{1,2}):(\d{2})")
+NOT_ENROLLED_RE = re.compile(r"^\s*перевести\s+сюда|waiting\s*list|лист\s+ожидания|to\s+be\s+moved|не\s+хочет", re.I)
+
+
+def read_december_groups(raw, info=None, today=None):
+    """xlsx bytes -> [{where, email, latin_name, coach, title, room, leader, time, start, end, changed, key}]
+    for every enrolled student of the «Декабрь по группам» tab ([] when there is none)."""
+    import datetime
+
+    if raw[:2] != b"PK":
+        return []
+    import openpyxl
+
+    info = info or {}
+    today = today or datetime.date.today()
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
+    ws = next((w for w in wb.worksheets if DECEMBER_TAB_RE.search(w.title)), None)
+    if ws is None:
+        return []
+    rows = [list(r) for r in ws.iter_rows(values_only=True)]
+    first = clean_ws(rows[0][0] if rows and rows[0] else "")
+    m = re.search(r"(\d{1,2})\.(\d{1,2})\s*[–—-]\s*(\d{1,2})\.(\d{1,2})", first)
+    if not m:
+        return []
+    year = today.year
+    start = datetime.date(year, int(m.group(2)), int(m.group(1)))
+    if start < today - datetime.timedelta(days=200):
+        start = start.replace(year=year + 1)
+    end = datetime.date(start.year + (int(m.group(4)) < start.month), int(m.group(4)), int(m.group(3)))
+    cell = lambda r, c: clean_ws(rows[r][c]) if c < len(rows[r]) else ""  # noqa: E731
+    out = []
+    for i, r in enumerate(rows):
+        for c in range(0, len(r), 7):
+            slot = SLOT_RE.match(cell(i, c + 4)) if c + 4 < len(r) else None
+            title = cell(i, c + 3)
+            if not slot or not title or "закрыва" in cell(i, c + 4).lower():
+                continue
+            days = ("Пн", "Чт") if slot.group(1) == "Пн/Чт" else ("Вт", "Пт")
+            day0 = start + datetime.timedelta(days=(0 if days[0] == "Пн" else 1) - start.weekday())
+            h, mm = int(slot.group(2)), slot.group(3)
+            t, room, leader = info.get(title.lower(), (title, "", ""))
+            for j in range(i + 2, len(rows)):  # the student rows below the «ФИО» header
+                name = cell(j, c)
+                nxt = j + 1 < len(rows) and SLOT_RE.match(cell(j + 1, c + 4))
+                if SLOT_RE.match(cell(j, c + 4)) or nxt:  # the next workshop's title (and its band label)
+                    break
+                if name.lower() == "фио":
+                    continue
+                if not name or NOT_ENROLLED_RE.search(cell(j, c + 4)):
+                    continue
+                user = cell(j, c + 1).lower()
+                email = f"{user}@tumo.world" if re.fullmatch(r"[a-z0-9._%+-]+", user) else ""
+                out.append({"where": f"[{ws.title}:{j + 1}]", "name": "", "email": email, "latin_name": name,
+                            "coach": cell(j, c + 3), "title": t, "room": room, "leader": leader,
+                            "time": f"{days[0]}, {days[1]} {h:02d}:{mm}–{h + 2:02d}:{mm}",
+                            "start": day0.isoformat(), "end": end.isoformat(), "changed": "",
+                            "key": title.lower()})
     return out
 
 
@@ -804,6 +872,9 @@ def main():
                     help='Onboarding stream tabs to include, e.g. "4" or "4,5" (default: %(default)s)')
     ap.add_argument("--workshops", action="append", default=[], metavar="FILE",
                     help="Downloaded workshop sheet (.xlsx); may be given several times")
+    ap.add_argument("--december", metavar="FILE",
+                    help="Downloaded sheet with the «Декабрь по группам» tab: when given, its groups are the only "
+                         "workshops (the next one; no current workshop)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -835,11 +906,25 @@ def main():
         for extra in args.workshops:
             if Path(extra).exists():
                 workshop_rows += read_workshop_rows(Path(extra).read_bytes())
+    if args.december and Path(args.december).exists():
+        info, ws_raw = {}, b""
+        for extra in args.workshops:
+            if Path(extra).exists():
+                ws_raw = Path(extra).read_bytes()
+                info.update(read_platform_export(ws_raw)[1])
+        dec = read_december_groups(Path(args.december).read_bytes(), info)
+        if dec:
+            # the activities («Задания к воркшопу») come from «Upcoming», same student and workshop
+            workshop_rows = read_upcoming(ws_raw, info, enrolled=dec) if ws_raw else dec
+            for w in workshop_rows:
+                if not w.get("activities"):
+                    w.pop("activities", None)
+            print(f"Воркшопы из «Декабрь по группам»: {len(dec)} учеников (только следующий воркшоп)")
     unmatched = attach_workshops(students, workshop_rows)
     if workshop_rows:
         print(f"Воркшопы: {len(workshop_rows)} строк, найдено учеников: {len(workshop_rows) - len(unmatched)}")
         for w in unmatched:
-            problems.append(f"{w['where']} воркшоп «{w['title']}»: ученик не найден: {w['email'] or w['name']}")
+            problems.append(f"{w['where']} воркшоп «{w['title']}»: ученик не найден: {w['email'] or w['name'] or w.get('latin_name', '')}")
         problems += [f"{w['where']} {w['note']}" for w in workshop_rows if w.get("note")]
     active = [s for s in students if not s[8]]
     onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
