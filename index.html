@@ -894,11 +894,16 @@
   }
 
   // ---------- workshop block, card actions, share links, saved students ----------
-  // Workshop blocks are switched off for now: no workshop cards, badges or alerts, and the card keeps
-  // its normal SL schedule and stage. Set to true to show them again (the data still syncs).
-  const SHOW_WORKSHOPS = false;
+  // Which workshops the card shows: false = none; 'next' = only the upcoming one («Следующий воркшоп»,
+  // its «скоро» alert and badge; no running workshop, the card keeps its SL schedule and stage);
+  // true = current and next.
+  const SHOW_WORKSHOPS = 'next';
   function wsTimeline(r, now, days){
-    return SHOW_WORKSHOPS ? StudentData.workshopTimeline(r, now, days) : {};
+    if(!SHOW_WORKSHOPS) return {};
+    const tl = StudentData.workshopTimeline(r, now, days);
+    return SHOW_WORKSHOPS === 'next'
+      ? { next: tl.next, nextSoon: tl.nextSoon, changed: !!(tl.next && tl.next.changed && tl.changed) }
+      : tl;
   }
   const SAVED_KEY = 'tumo-saved-students';
   function loadSaved(){ try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch { return []; } }
@@ -1239,7 +1244,7 @@
           </div>
           <div>
             <div class="fact-label">${t('factStage')}</div>
-            <div class="fact-value">${escapeHtml(trStage(SHOW_WORKSHOPS ? StudentData.effectiveStage(r, now) : r.stage)) || t('comingSoon')}</div>
+            <div class="fact-value">${escapeHtml(trStage(SHOW_WORKSHOPS === true ? StudentData.effectiveStage(r, now) : r.stage)) || t('comingSoon')}</div>
           </div>
           ${r.room ? `<div>
             <div class="fact-label">${t('factRoom')}</div>

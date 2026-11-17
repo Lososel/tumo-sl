@@ -391,6 +391,40 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual([(w["title"], w["room"], w["start"], w["activities"]) for w in up],
                          [("Робототехника I", "2 этаж, WR 1", "2026-11-24", [["Bananas", "Awarded"]])])  # not Music I
 
+    def test_december_groups_are_the_next_workshop(self):
+        import datetime
+        hdr = ["ФИО", "Username", "Ссылка (360)", "Коуч", "Можно убрать / куда", "Пререквизиты", "Остаётся"]
+        title = lambda ws, slot: ["записано: …", "", "", ws, slot, "", ""]  # noqa: E731
+        st = lambda name, user, note="", x="": [name, user, "https://360.ast.tumo.world/reg/view?id=1", "Almas Musalimov", note, x, False]  # noqa: E731
+        raw = xlsx({"Декабрь по группам": [
+            ["Декабрь (23.11–20.12): записанные ученики по воркшопам"], [],
+            ["Robotics"] + [""] * 6 + ["Robotics"],
+            title("Robotics I", "Пн/Чт 10:30") + title("Robotics I", "Вт/Пт 14:30 — группа закрывается"),
+            hdr + hdr,
+            st("Ivan Petrov", "ivan.petrov") + st("Closing Group", "closing.group"),
+            st("Abay Kumisbek", "—") + [""] * 7,
+            st("Candidate One", "candidate.one", "перевести сюда (добавить в Robotics I)", "❌"),
+            st("Wait Ing", "wait.ing", "waiting list"),
+            [],
+            ["Music"] + [""] * 6,
+            title("Music II", "Вт/Пт 16:30"),
+            hdr,
+            st("Anna Smirnova", "anna.smirnova", "можно убрать (уже проходил)"),
+        ]})
+        info = {"robotics i": ("Робототехника I", "2 этаж, WR 1", "Бердиходжаев Адилбек")}
+        rows = sts.read_december_groups(raw, info, today=datetime.date(2026, 11, 17))
+        self.assertEqual([(r["latin_name"], r["email"], r["title"], r["room"], r["time"], r["start"], r["end"]) for r in rows], [
+            ("Ivan Petrov", "ivan.petrov@tumo.world", "Робототехника I", "2 этаж, WR 1", "Пн, Чт 10:30–12:30",
+             "2026-11-23", "2026-12-20"),
+            ("Abay Kumisbek", "", "Робототехника I", "2 этаж, WR 1", "Пн, Чт 10:30–12:30", "2026-11-23", "2026-12-20"),
+            ("Anna Smirnova", "anna.smirnova@tumo.world", "Music II", "", "Вт, Пт 16:30–18:30", "2026-11-24", "2026-12-20")])
+        self.assertNotIn("360.ast", repr(rows))  # the link is never kept
+        rec = lambda name, email="": [name, "Вторник", "10:30-12:30", "Almas", "", "Самообучение", email, "", "", []]  # noqa: E731
+        students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Кумисбек Абай Ерланұлы"),
+                    rec("Смирнова Анна")]
+        self.assertEqual(sts.attach_workshops(students, rows), [])
+        self.assertEqual([s[9][0][0] for s in students], ["Робототехника I", "Робототехника I", "Music II"])
+
     def test_a_student_found_by_email_is_not_claimed_by_another_email(self):
         rec = lambda name, email: [name, "", "", "Aruzhan", "", "Самообучение", email, "", "", []]  # noqa: E731
         amir = rec("Алибаев Амир Нурболұлы", "alibaev.amir@tumo.world")
