@@ -54,7 +54,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   prerequisite activity, the plan through the year). The sync keeps only the next cycle — workshops starting in the
   week of the earliest start date after today (23–24.11), nothing later (`read_upcoming`) — with its activities as an 8th element `[[activity, status]]` of the workshop entry;
   the card's «Следующий воркшоп» shows «Задания к воркшопу · выполнено N из 3» with RU/KZ status chips
-  (Awarded/Working/Pending/Rejected/Not Opened). Matched like «Лист3» (email, name in the email, then the Latin
+  (Awarded/Working/Pending/Rejected/Not Opened). Hidden for now (`SHOW_ACTIVITIES = false` in `index.html`); the data stays in `students.json`. Matched like «Лист3» (email, name in the email, then the Latin
   Full Name). The Link column is never published. Matching rules: a student found by their own email can't be
   claimed by another email's name; patronymics don't count; a student with another master-sheet email needs
   the same SL coach.
