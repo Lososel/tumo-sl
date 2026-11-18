@@ -898,6 +898,8 @@
   // its «скоро» alert and badge; no running workshop, the card keeps its SL schedule and stage);
   // true = current and next.
   const SHOW_WORKSHOPS = 'next';
+  // «Задания к воркшопу · выполнено N из 3» on the workshop block; false hides it (the data stays in students.json).
+  const SHOW_ACTIVITIES = false;
   function wsTimeline(r, now, days){
     if(!SHOW_WORKSHOPS) return {};
     const tl = StudentData.workshopTimeline(r, now, days);
@@ -942,7 +944,7 @@
   }
   // «Задания к воркшопу»: the upcoming workshop's activities on the platform and how many are done.
   function activitiesHtml(x){
-    const acts = x.activities || [];
+    const acts = SHOW_ACTIVITIES && x.activities || [];
     if(!acts.length) return '';
     const w = t('ws');
     const done = acts.filter(a => a.status === 'awarded').length;
