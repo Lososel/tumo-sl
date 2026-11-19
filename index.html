@@ -408,6 +408,46 @@
   }
 
   /* ---------- FAQ ---------- */
+  /* ---------- first day, entrance, checklist (from tumo-onb-app) ---------- */
+  .first-day{margin-top:40px;}
+  .first-day h3,.entrance h3{font-size:clamp(18px,2.4vw,20px);font-weight:900;color:var(--black);margin:0;}
+  .first-day ol{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));}
+  .first-day li{display:flex;flex-direction:column;gap:12px;border:2px solid var(--purple-tint2);background:var(--purple-tint);border-radius:16px;padding:20px;}
+  .first-day .num{display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--purple-deep);color:#fff;font-weight:900;font-size:18px;}
+  .first-day p{margin:0;color:var(--text);line-height:1.4;}
+  .first-day p strong{display:block;color:var(--black);}
+  .entrance{margin-top:40px;display:grid;grid-template-columns:minmax(0,20rem) 1fr;gap:32px;align-items:center;}
+  .entrance img{width:100%;height:auto;border-radius:24px;border:2px solid var(--purple-tint2);}
+  .entrance p{margin:12px 0 0;color:var(--text);line-height:1.625;}
+  .entrance .entrance-note{margin-top:16px;border-radius:16px;background:var(--purple-tint);padding:12px 16px;font-weight:700;color:var(--purple-deep);}
+  .checklist{margin-top:64px;}
+  .checklist .intro{color:var(--text);line-height:1.625;font-size:clamp(16px,2vw,18px);margin:0;}
+  .checklist .progress{margin:16px 0 0;font-size:14px;font-weight:700;color:var(--purple-deep);}
+  .checklist ol{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:16px;}
+  .ck-step{border:2px solid var(--black);border-radius:24px;padding:20px 24px;background:#fff;transition:border-color .15s,background .15s;}
+  .ck-step.done{border-color:#6ee7b7;background:rgba(236,253,245,.5);}
+  .ck-head{display:flex;align-items:flex-start;gap:16px;}
+  .ck-icon{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:16px;background:var(--purple-tint);color:var(--purple-deep);}
+  .ck-icon svg,.checklist h2 svg{width:24px;height:24px;}
+  .checklist h2 svg{width:.9em;height:.9em;vertical-align:middle;margin:-4px 6px 0 0;}
+  .ck-head h3{flex:1;min-width:0;align-self:center;margin:0;font-size:clamp(18px,2.4vw,20px);font-weight:900;line-height:1.3;color:var(--black);}
+  .ck-head h3 span{color:var(--purple-deep);}
+  .ck-tick{display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:50%;border:2px solid #cbd5e1;background:#fff;color:transparent;cursor:pointer;padding:0;}
+  .ck-tick:hover{border-color:var(--purple);}
+  .ck-step.done .ck-tick{border-color:#10b981;background:#10b981;color:#fff;}
+  .ck-tick svg{width:20px;height:20px;}
+  .ck-step ul{list-style:none;margin:16px 0 0;padding:0 0 0 60px;display:grid;gap:10px;}
+  .ck-step li{display:flex;gap:10px;color:var(--text);line-height:1.625;}
+  .ck-step li::before{content:"";width:6px;height:6px;margin-top:10px;flex-shrink:0;border-radius:50%;background:var(--purple);}
+  .ck-step li strong{color:var(--black);}
+  .ck-step li code{border-radius:4px;background:#f1f5f9;padding:2px 6px;font-size:.9em;color:var(--black);}
+  @media (max-width:640px){
+    .first-day ol{grid-template-columns:1fr;}
+    .first-day li{flex-direction:row;padding:16px;}
+    .entrance{grid-template-columns:1fr;gap:20px;}
+    .ck-step{padding:20px;}
+    .ck-step ul{padding-left:4px;}
+  }
   .faq{margin-top:56px;}
   .faq-item{
     border-bottom:1.5px solid var(--line);
@@ -551,6 +591,18 @@
     </div>
 
     <div id="results" class="results"></div>
+
+    <!-- From tumo-onb-app (frontend/src/components/ScheduleSearch.vue, StudentChecklist.vue): first day, entrance, checklist -->
+    <div id="firstDay" class="first-day"></div>
+    <div class="entrance">
+      <img src="js/how-to-get-there.jpg" id="entranceImg" width="1413" height="2000" loading="lazy" alt="">
+      <div>
+        <h3 id="entranceTitle"></h3>
+        <p id="entranceText"></p>
+        <p class="entrance-note" id="entranceNote"></p>
+      </div>
+    </div>
+    <div id="checklist" class="checklist"></div>
 
     <div class="faq">
       <div class="divider-heading"><h2 data-i18n="faqTitle">Частые вопросы о TUMO</h2></div>
@@ -1332,6 +1384,57 @@
     });
   }
 
+
+  // First-day steps, entrance and the new-student checklist: texts of tumo-onb-app (frontend/src/locales/ru.ts / kk.ts).
+  const ONB_CONTENT = {"ru": {"firstDay": {"title": "Важные шаги для первого дня", "steps": [{"title": "Найдите учащегося", "text": "Введите имя и фамилию в строку выше, чтобы узнать расписание, номер кабинета и имя вашего коуча."}, {"title": "Запомните имя коуча", "text": "В первый день в центре будут таблички с именами коучей — вам нужно будет встать в очередь к вашему коучу."}, {"title": "Сохраните почту TUMO", "text": "Сохраните логин @tumo.world — на первом занятии коуч поможет войти в рабочий аккаунт."}]}, "entrance": {"title": "Как пройти в центр в день обучения?", "text": "В TUMO Center можно пройти через боковой вход в alem.ai, расположенный напротив Театра драмы и комедии им. Азербайжана Мамбетова.", "nothingToBring": "С собой ничего брать не нужно.", "alt": "Карта: боковой вход в alem.ai напротив Театра Мамбетова, рядом Hilton Astana и Mega Silkway"}, "checklist": {"nav": "Памятка ученика", "title": "Чек-лист нового ученика TUMO Astana", "intro": "Добро пожаловать в TUMO! Чтобы твои первые дни и занятия прошли гладко, а вход в центр и обучение были комфортными, обязательно выполни следующие шаги:", "progress": "Выполнено: {done} из {total}", "markDone": "Отметить шаг как выполненный", "steps": [{"icon": "chat", "title": "Сообщество в WhatsApp", "items": ["**Ученик:** Убедись, что ты состоишь в официальном WhatsApp-сообществе своей группы и потока (именно там публикуются важные анонсы, расписание и ссылки).", "**Родители:** Проверь, чтобы хотя бы один из родителей также состоял в родительском чате/сообществе TUMO для получения организационных новостей и уведомлений."]}, {"icon": "mail", "title": "Почта TUMO на телефоне", "items": ["Войди в свою корпоративную почту `@tumo.world` через приложение Gmail на телефоне (нативные почтовые клиенты iOS/Android могут сбоить с корпоративными учётными записями).", "Включи уведомления для этого аккаунта в настройках телефона, чтобы не пропустить важные письма от коучей и администрации."]}, {"icon": "lock", "title": "Логин и Пароль", "items": ["Сохрани логин (почту) и пароль в заметках, менеджере паролей или отправь себе в «Избранное / Saved Messages» в мессенджере.", "**Важно:** Не теряй пароль! Если забыл пароль — сразу обратись к своему коучу."]}, {"icon": "face", "title": "Вход в центр и Face ID", "items": ["В первый день тебя встретят на ресепшен и помогут пройти.", "В течение первых дней тебя сфотографируют для Face ID, чтобы турникет открывался автоматически. Если турникет позже не сработает — просто обратись к коучу или на ресепшен."]}, {"icon": "monitor", "title": "Выход из аккаунта на Mac (iMac)", "items": ["**Завершение сессии:** В конце каждого занятия обязательно выходи из своего аккаунта на компьютере, чтобы никто другой не использовал твой профиль.", "**Как выйти из сессии на iMac:** Нажми на иконку «яблочка» в верхнем левом углу экрана и выбери **Завершить сессию... (Log Out)**."]}, {"icon": "water", "title": "Питьевой режим", "items": ["Возьми с собой личную бутылку для воды — в центре установлены кулеры, где её можно будет наполнять во время перерывов."]}, {"icon": "help", "title": "Помощь в зале (Коучи)", "items": ["Запомни имя своего коуча!", "Если столкнулся с технической проблемой, не понимаешь задание на платформе или не можешь войти в систему — подними руку или сразу подходи к коучу. На самообучении коучи всегда находятся в зале, чтобы помогать тебе."]}]}}, "kz": {"firstDay": {"title": "Бірінші күнге арналған маңызды қадамдар", "steps": [{"title": "Оқушыны табыңыз", "text": "Кестені, кабинет нөмірін және коучыңыздың атын білу үшін жоғарыдағы жолға аты мен тегін енгізіңіз."}, {"title": "Коучтың атын есте сақтаңыз", "text": "Бірінші күні орталықта коучтардың аттары жазылған тақтайшалар болады — өз коучыңызға кезекке тұруыңыз керек."}, {"title": "TUMO поштасын сақтаңыз", "text": "@tumo.world логинін сақтаңыз — бірінші сабақта коуч жұмыс аккаунтына кіруге көмектеседі."}]}, "entrance": {"title": "Оқу күні орталыққа қалай кіруге болады?", "text": "TUMO Center-ге А. Мамбетов атындағы драма және комедия театрына қарама-қарсы орналасқан alem.ai ғимаратының бүйір кіреберісі арқылы кіруге болады.", "nothingToBring": "Өзіңізбен ештеңе алып келудің қажеті жоқ.", "alt": "Карта: Мамбетов театрына қарама-қарсы alem.ai бүйір кіреберісі, жанында Hilton Astana және Mega Silkway"}, "checklist": {"nav": "Оқушы жадынамасы", "title": "TUMO Astana жаңа оқушысының чек-парағы", "intro": "TUMO-ға қош келдің! Алғашқы күндерің мен сабақтарың кедергісіз өтіп, орталыққа кіру мен оқу ыңғайлы болуы үшін келесі қадамдарды міндетті түрде орында:", "progress": "Орындалды: {done} / {total}", "markDone": "Қадамды орындалды деп белгілеу", "steps": [{"icon": "chat", "title": "WhatsApp қауымдастығы", "items": ["**Оқушы:** Өз тобың мен ағымыңның ресми WhatsApp қауымдастығында екеніңе көз жеткіз (маңызды хабарландырулар, кесте және сілтемелер дәл сонда жарияланады).", "**Ата-аналар:** Ұйымдастыру жаңалықтары мен хабарламаларын алу үшін ата-ананың кем дегенде біреуі TUMO ата-аналар чатында/қауымдастығында екенін тексеріңіз."]}, {"icon": "mail", "title": "Телефондағы TUMO поштасы", "items": ["Телефоныңдағы Gmail қосымшасы арқылы `@tumo.world` корпоративтік поштаңа кір (iOS/Android-тың кірістірілген пошта қосымшалары корпоративтік аккаунттармен дұрыс жұмыс істемеуі мүмкін).", "Коучтар мен әкімшіліктің маңызды хаттарын өткізіп алмау үшін телефон баптауларында осы аккаунттың хабарламаларын қос."]}, {"icon": "lock", "title": "Логин және құпия сөз", "items": ["Логинді (поштаны) және құпия сөзді жазбаларға, құпия сөз менеджеріне сақта немесе мессенджердегі «Таңдаулылар / Saved Messages» бөліміне өзіңе жібер.", "**Маңызды:** Құпия сөзді жоғалтпа! Құпия сөзді ұмытып қалсаң — бірден коучыңа хабарла."]}, {"icon": "face", "title": "Орталыққа кіру және Face ID", "items": ["Бірінші күні сені ресепшенде қарсы алып, өтуге көмектеседі.", "Алғашқы күндері сені Face ID-ге суретке түсіреді — сонда турникет автоматты түрде ашылады. Кейін турникет іске қосылмаса — жай ғана коучқа немесе ресепшенге жүгін."]}, {"icon": "monitor", "title": "Mac (iMac) компьютерінде аккаунттан шығу", "items": ["**Сеансты аяқтау:** Әр сабақтың соңында басқа ешкім сенің профиліңді пайдаланбауы үшін компьютердегі аккаунтыңнан міндетті түрде шық.", "**iMac-та сеанстан қалай шығуға болады:** Экранның сол жақ жоғарғы бұрышындағы «алма» белгішесін бас та, **Сеансты аяқтау... (Log Out)** тармағын таңда."]}, {"icon": "water", "title": "Су ішу режимі", "items": ["Өзіңмен жеке су бөтелкесін ала кел — орталықта кулерлер орнатылған, үзіліс кезінде бөтелкені сол жерден толтыруға болады."]}, {"icon": "help", "title": "Залдағы көмек (Коучтар)", "items": ["Коучыңның атын есте сақта!", "Техникалық қиындыққа тап болсаң, платформадағы тапсырманы түсінбесең немесе жүйеге кіре алмасаң — қолыңды көтер немесе бірден коучқа бар. Өзіндік оқу кезінде коучтар саған көмектесу үшін әрдайым залда болады."]}]}}};
+  // Line icons for the checklist (Lucide, ISC licence).
+  const CK_ICONS = {"chat": "<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/>", "mail": "<rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/>", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/>", "face": "<path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/><path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/><path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/><path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/><path d=\"M8 14s1.5 2 4 2 4-2 4-2\"/><path d=\"M9 9h.01\"/><path d=\"M15 9h.01\"/>", "monitor": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"3\" rx=\"2\"/><path d=\"M8 21h8\"/><path d=\"M12 17v4\"/>", "water": "<path d=\"M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z\"/>", "help": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/>", "clipboard": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><path d=\"m9 14 2 2 4-4\"/>"};
+  const ckSvg = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CK_ICONS[name] || ''}</svg>`;
+  // Ticks are a per-device convenience only: kept in this browser, never sent anywhere.
+  const CK_KEY = 'tumo.checklist';
+  function ckRestore(){
+    try { const v = JSON.parse(localStorage.getItem(CK_KEY) || '[]'); return Array.isArray(v) ? v.map(Boolean) : []; }
+    catch(e){ return []; }
+  }
+  let ckDone = ckRestore();
+  // **bold** and `code` in the texts; everything else escaped.
+  const ckInline = line => line.split(/(\*\*[^*]+\*\*|`[^`]+`)/).filter(Boolean).map(part =>
+    part.startsWith('**') ? `<strong>${escapeHtml(part.slice(2, -2))}</strong>`
+    : part.startsWith('`') ? `<code>${escapeHtml(part.slice(1, -1))}</code>` : escapeHtml(part)).join('');
+  function renderOnbContent(){
+    const c = ONB_CONTENT[currentLang] || ONB_CONTENT.ru;
+    document.getElementById('firstDay').innerHTML = `<h3>${escapeHtml(c.firstDay.title)}</h3>
+      <ol>${c.firstDay.steps.map((st, i) => `<li><span class="num" aria-hidden="true">${i + 1}</span>
+        <p><strong>${escapeHtml(st.title)}</strong>${escapeHtml(st.text)}</p></li>`).join('')}</ol>`;
+    document.getElementById('entranceImg').alt = c.entrance.alt;
+    document.getElementById('entranceTitle').textContent = c.entrance.title;
+    document.getElementById('entranceText').textContent = c.entrance.text;
+    document.getElementById('entranceNote').textContent = c.entrance.nothingToBring;
+    renderChecklist();
+  }
+  function renderChecklist(){
+    const c = (ONB_CONTENT[currentLang] || ONB_CONTENT.ru).checklist;
+    const done = c.steps.filter((_, i) => ckDone[i]).length;
+    document.getElementById('checklist').innerHTML = `
+      <div class="divider-heading"><h2>${ckSvg('clipboard')}${escapeHtml(c.title)}</h2></div>
+      <p class="intro">${escapeHtml(c.intro)}</p>
+      <p class="progress" aria-live="polite">${escapeHtml(c.progress.replace('{done}', done).replace('{total}', c.steps.length))}</p>
+      <ol>${c.steps.map((st, i) => `<li class="ck-step${ckDone[i] ? ' done' : ''}">
+        <div class="ck-head"><span class="ck-icon" aria-hidden="true">${ckSvg(st.icon)}</span>
+          <h3><span>${i + 1}.</span> ${escapeHtml(st.title)}</h3>
+          <button type="button" class="ck-tick" role="checkbox" data-ck="${i}" aria-checked="${!!ckDone[i]}"
+            aria-label="${escapeHtml(c.markDone + ': ' + st.title)}"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0z" clip-rule="evenodd"/></svg></button></div>
+        <ul>${st.items.map(line => `<li><span>${ckInline(line)}</span></li>`).join('')}</ul></li>`).join('')}</ol>`;
+  }
+  document.getElementById('checklist').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ck]');
+    if(!b) return;
+    const i = +b.dataset.ck;
+    ckDone = ckDone.slice(); ckDone[i] = !ckDone[i];
+    try { localStorage.setItem(CK_KEY, JSON.stringify(ckDone)); } catch(err){ /* private mode: ticks aren't remembered */ }
+    renderChecklist();
+  });
+
   function setLang(lang){
     currentLang = lang;
     document.documentElement.lang = lang === 'kz' ? 'kk' : 'ru';
@@ -1340,6 +1443,7 @@
     applyStaticI18n();
     input.placeholder = t('searchPlaceholder');
     renderFaq();
+    renderOnbContent();
     updateWaLink();
     renderContactList();
     updateInstallBar();

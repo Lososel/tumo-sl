@@ -115,3 +115,6 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   workshop runs). Copy link and save are icon buttons next to
   the name. (`buildIcs` stays in `js/student-data.js` but has no button.)
 - PWA manifest and icons live in `js/` so every build that publishes `js/` serves them.
+- Below the results, copied from tumo-onb-app (being shut down; all students move here): «Важные шаги для первого
+  дня», «Как пройти в центр» (map `js/how-to-get-there.jpg`) and «Чек-лист нового ученика» (7 steps, ticks kept in
+  localStorage `tumo.checklist`), RU/KZ texts in `ONB_CONTENT` in `index.html`.
