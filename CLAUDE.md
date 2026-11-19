@@ -111,6 +111,12 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   «Этап обучения» = «Воркшоп»; the SL schedule and main day are hidden and one banner says «Сейчас вы
   посещаете только воркшоп. Самообучение возобновится с <date>.»; no «Коуч остался прежним» note.
 
+## Sync timing
+- GitHub runs the workflow's `*/15` schedule only every few hours. `apps-script/sync-trigger.gs` (a Google Apps
+  Script, run from the account that can open the files) checks the master sheet's and «6 ПОТОК»'s «last modified»
+  every 5 minutes and starts the workflow (`workflow_dispatch`) when one changed. Its GitHub token (fine-grained,
+  this repo, Actions: write) is only in the script's properties, never in git. Add more files to `FILES` there.
+
 ## Page features
 - `?s=<id>` opens one student's card (`StudentData.studentId`: hash of the folded name).
 - «Сохранить на этом устройстве» keeps ids in localStorage (`tumo-saved-students`).

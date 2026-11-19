@@ -108,4 +108,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git commit -m "Sync students from master sheet"
-          git push
+          # Another run (e.g. one started by apps-script/sync-trigger.gs) may have pushed meanwhile:
+          # put this run's freshly built file on top of the latest main and retry.
+          cp data/students.json "$RUNNER_TEMP/students.json"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            sleep $((i * 5))
+            git fetch origin main
+            git reset -q --hard origin/main
+            cp "$RUNNER_TEMP/students.json" data/students.json
+            git add data/students.json
+            git diff --cached --quiet && { echo "Already up to date."; exit 0; }
+            git commit -m "Sync students from master sheet"
+          done
+          exit 1
