@@ -785,6 +785,12 @@ def parse(tables, published=None, stats=None):
             continue
         cols = map_header(rows[0])
         onboarding = stream_of(tab) is not None
+        if not onboarding and "coach" not in cols and "ex" in cols:
+            nxt = cols["ex"] + 1
+            if nxt < len(rows[0]) and not clean_ws(rows[0][nxt]):
+                # the «Новый коуч SL» header was deleted: the coach column is still the one right after «ex-Coach»
+                cols["coach"] = nxt
+                problems.append(f"[{tab}] нет заголовка «Новый коуч SL» — коуч взят из колонки после «ex-Coach»")
         extra = " · " in (tab or "")  # a tab of a separate stream file (--stream-file)
         stream_no = stream_of(tab) if extra else None
         if "name" not in cols or ("schedule" if onboarding else "day") not in cols:

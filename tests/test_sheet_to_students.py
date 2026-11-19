@@ -256,6 +256,14 @@ class SheetToStudentsTest(unittest.TestCase):
         marked = {r[0] for r in parsed if id(r) in st["stream_of"]}
         self.assertEqual(marked, {"Шестой Поток"})
 
+    def test_coach_column_without_header(self):
+        # «ВТ ПТ 1030»: the «Новый коуч SL» header cell was cleared; the coach is the column after «ex-Coach»
+        hdr = list(HEADER)
+        hdr[hdr.index("Новый коуч SL")] = ""
+        students, problems = sts.parse([("ВТ ПТ 1030", [hdr, row("Бердіқұл Сандуғаш", "Вторник", "Nurai", "Nurai")])])
+        self.assertEqual(students[0][1:5], ["Вторник", "10:30-12:30", "Nurai", "Nurai"])
+        self.assertEqual(len(problems), 1)
+
     def test_workshop_sheet_is_attached_by_full_name(self):
         import datetime
         tabs = {"ПН ЧТ 1030": [HEADER,
