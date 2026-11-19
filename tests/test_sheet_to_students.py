@@ -225,6 +225,23 @@ class SheetToStudentsTest(unittest.TestCase):
         with_5 = sts.parse(sts.read_tables(raw))[0]
         self.assertEqual(with_5[-1][:6], ["Пятый Поток", "Вторник", "14:30-16:30", "Danel", "", "Онбординг"])
 
+        # a separate stream file («6 ПОТОК»): every tab is a stream tab, even «ПНЧТ 1030» (looks like a main tab);
+        # «(ЛИСТ ОЖИДАНИЯ НА 2027)» / «НЕТ МЕСТ» = waitlist, a plain «(лист ожидания)» attends; master rows win
+        six = xlsx({"ПНЧТ 1030": [header,
+                                  kid("Шестой Поток", "Понедельник, Четверг : 10:30–12:30 (лист ожидания)", "Danel", "2 этаж, зона SL", ""),
+                                  kid("Позже Ученик", "Понедельник, Четверг : 10:30–12:30 (ЛИСТ ОЖИДАНИЯ НА 2027)", "Alen", "", ""),
+                                  kid("Нет Мест", "Понедельник, Четверг : 10:30–12:30", "НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ", "", ""),
+                                  kid("Пятый Поток", "Понедельник, Четверг : 10:30–12:30", "Alen", "", "")],
+                    "Лист7": []})
+        tables = sts.read_tables(six, stream="6")
+        self.assertEqual([t[0] for t in tables], ["6 поток · ПНЧТ 1030", "6 поток · Лист7"])
+        got = {s[0]: s for s in sts.parse(sts.read_tables(raw) + [t for t in tables if len(t[1]) > 1])[0]}
+        self.assertEqual(got["Шестой Поток"][:9], ["Шестой Поток", "Понедельник", "10:30-12:30", "Danel", "", "Онбординг",
+                                                   "", "2 этаж, зона SL", ""])
+        self.assertEqual(got["Позже Ученик"][8], "waitlist")
+        self.assertEqual(got["Нет Мест"][8], "waitlist")
+        self.assertEqual(got["Пятый Поток"][1:4], ["Вторник", "14:30-16:30", "Danel"])
+
     def test_workshop_sheet_is_attached_by_full_name(self):
         import datetime
         tabs = {"ПН ЧТ 1030": [HEADER,
