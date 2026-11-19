@@ -59,7 +59,8 @@ from sync_schedule import (  # noqa: E402
 
 STAGE = "Самообучение"
 ONBOARDING_STAGE = "Онбординг"
-STREAM_TAB_RE = re.compile(r"^(\d+)\s*поток$", re.I)
+STREAM_TAB_RE = re.compile(r"^(\d+)\s*поток(?:$|\s·)", re.I)  # «4 поток», or «6 поток · ПНЧТ 1030» (--stream-file)
+NO_SEATS_RE = re.compile(r"нет\s+мест", re.I)  # «НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ» in an onboarding «Коуч»
 DEFAULT_STREAMS = ("4", "5")  # onboarding stream tabs to include, by number
 SLOT_BY_HOUR = {"10": "10:30-12:30", "14": "14:30-16:30", "16": "16:30-18:30"}
 TAB_RE = re.compile(r"^(ПН\s*ЧТ|ВТ\s*ПТ)\s*(\d{2})\d{2}$", re.I)
@@ -709,9 +710,10 @@ def stream_of(tab):
     return m.group(1) if m else None
 
 
-def read_tables(raw, streams=DEFAULT_STREAMS):
+def read_tables(raw, streams=DEFAULT_STREAMS, stream=None):
     """bytes -> [(tab_name or None, rows, colors)] where colors[i] is the status the fill of
-    row i's «ФИО» cell stands for: "inactive" (red), "waitlist" (dark purple) or "". CSV: None."""
+    row i's «ФИО» cell stands for: "inactive" (red), "waitlist" (dark purple) or "". CSV: None.
+    stream: a separate onboarding-stream file («6 ПОТОК»): every tab is read as «<stream> поток · <tab>»."""
     if raw[:2] == b"PK":
         import openpyxl
 
@@ -719,7 +721,9 @@ def read_tables(raw, streams=DEFAULT_STREAMS):
         tables = []
         for ws in wb.worksheets:
             title = ws.title.strip()
-            if not (TAB_RE.match(title) or stream_of(title) in set(streams)):
+            if stream:
+                title = f"{stream} поток · {title}"
+            elif not (TAB_RE.match(title) or stream_of(title) in set(streams)):
                 continue
             rows, red, name_col = [], [], 0
             for i, cells in enumerate(ws.iter_rows()):
@@ -728,7 +732,7 @@ def read_tables(raw, streams=DEFAULT_STREAMS):
                     name_col = map_header(values).get("name", 0)
                 rows.append(values)
                 red.append(fill_status(cells[name_col]) if i > 0 and name_col < len(cells) else "")
-            tables.append((ws.title.strip(), rows, red))
+            tables.append((title, rows, red))
         return tables
     text = raw.decode("utf-8-sig")
     if text.lstrip()[:1] == "<":
@@ -753,6 +757,8 @@ def pick_duplicate(cands, published):
     doesn't flip the schedule), then the last row."""
     best = min(STATUS_RANK[c["rec"][8]] for c in cands)
     cands = [c for c in cands if STATUS_RANK[c["rec"][8]] == best]
+    # a separate stream file («6 ПОТОК», --stream-file) only adds students: the master sheet's row wins
+    cands = [c for c in cands if not c.get("extra")] or cands
     if len(cands) == 1:
         return cands[0]
     confirmed = [c for c in cands if c["confirmed"]]
@@ -779,6 +785,7 @@ def parse(tables, published=None, stats=None):
             continue
         cols = map_header(rows[0])
         onboarding = stream_of(tab) is not None
+        extra = " · " in (tab or "")  # a tab of a separate stream file (--stream-file)
         if "name" not in cols or ("schedule" if onboarding else "day") not in cols:
             problems.append(f"[{tab}] нет колонок «ФИО» / «{'Расписание' if onboarding else 'День SL'}» — вкладка пропущена")
             continue
@@ -816,10 +823,18 @@ def parse(tables, published=None, stats=None):
                         if status:
                             stats["notes_" + status] += 1
                             break
+                if not status and onboarding:
+                    # «… 16:30–18:30 (ЛИСТ ОЖИДАНИЯ НА 2027)» or «Коуч: НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ»: waiting for a
+                    # later period. A plain «(лист ожидания)» is only the slot first requested: attends now.
+                    sched, coach_cell = clean_ws(get(row, "schedule")), clean_ws(get(row, "coach"))
+                    if note_status(sched) == WAITLIST or NO_SEATS_RE.search(coach_cell):
+                        status = WAITLIST
+                        stats["notes_" + status] += 1
             if status:
                 # Only the name: the card says «свяжитесь с нами», no schedule/coach/email.
                 rec = [name, "", "", "", "", stage, "", "", status, []]
-                by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": False})
+                by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": False,
+                                                          "extra": extra})
                 continue
             if onboarding:
                 # «Понедельник, Четверг : 10:30–12:30»: the pair's first day stands for the pair
@@ -852,7 +867,8 @@ def parse(tables, published=None, stats=None):
             rec = [name, day, time, coach, ex, stage,
                    email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
-            by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed})
+            by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed,
+                                                      "extra": extra})
 
     students = []
     for key, cands in by_key.items():
@@ -884,6 +900,8 @@ def main():
                          "(e.g. a single-tab CSV instead of the whole workbook)")
     ap.add_argument("--streams", default=",".join(DEFAULT_STREAMS),
                     help='Onboarding stream tabs to include, e.g. "4" or "4,5" (default: %(default)s)')
+    ap.add_argument("--stream-file", action="append", default=[], metavar="N=FILE",
+                    help="A separate onboarding-stream sheet (.xlsx), e.g. 6=6_potok.xlsx: every tab is read as «N поток»")
     ap.add_argument("--workshops", action="append", default=[], metavar="FILE",
                     help="Downloaded workshop sheet (.xlsx); may be given several times")
     ap.add_argument("--december", metavar="FILE",
@@ -897,7 +915,12 @@ def main():
     stats = {}
     streams = tuple(s.strip() for s in args.streams.split(",") if s.strip())
     raw = Path(args.source).read_bytes()
-    students, problems = parse(read_tables(raw, streams), {norm(r[0]): r for r in current}, stats)
+    tables = read_tables(raw, streams)
+    for spec in args.stream_file:
+        n, _, path = spec.partition("=")
+        if Path(path).exists():
+            tables += [t for t in read_tables(Path(path).read_bytes(), stream=n.strip()) if len(t[1]) > 1]
+    students, problems = parse(tables, {norm(r[0]): r for r in current}, stats)
     # The platform export («Лист3») in the workshop sheet is the one source of truth; without it, the
     # older hand-filled tabs («3d-modeling»…) and the master sheet's «Воркшопы» tab are read.
     export_rows, upcoming_rows = [], []

@@ -35,6 +35,8 @@ jobs:
       # «Декабрь по группам» (the next cycle's groups, checked against the platform): when it downloads,
       # its groups are the only workshops on the site. Share it with the service account (Viewer).
       DECEMBER_FILE_ID: ${{ vars.DECEMBER_SHEET_FILE_ID || '12ElbRcHplgALfzzEXprFCAzjE51z19zrUH7zBiBXmCc' }}
+      # «6 ПОТОК»: onboarding stream kept in its own file (one tab per slot)
+      STREAM6_FILE_ID: ${{ vars.STREAM6_SHEET_FILE_ID || '19Q8pVsaqKuOWrx4bbR0lv9CcauLKL2hXs5qZE0iRcLQ' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -80,11 +82,20 @@ jobs:
           python3 tools/fetch_sheet.py "$DECEMBER_FILE_ID" "$RUNNER_TEMP/december" \
             || echo "::warning::«Декабрь по группам» not downloaded (is it shared with the service account?) — using the workshop sheet."
 
+      - name: Download «6 ПОТОК» sheet
+        if: env.SA_JSON != '' && env.STREAM6_FILE_ID != ''
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python3 tools/fetch_sheet.py "$STREAM6_FILE_ID" "$RUNNER_TEMP/stream6" \
+            || echo "::warning::«6 ПОТОК» not downloaded (is it shared with the service account?) — syncing without it."
+
       - name: Build data/students.json
         run: |
           args=()
           [ -f "$RUNNER_TEMP/workshops" ] && args+=(--workshops "$RUNNER_TEMP/workshops")
           [ -f "$RUNNER_TEMP/december" ] && args+=(--december "$RUNNER_TEMP/december")
+          [ -f "$RUNNER_TEMP/stream6" ] && args+=(--stream-file "6=$RUNNER_TEMP/stream6")
           python3 tools/sheet_to_students.py "$RUNNER_TEMP/sheet" "${args[@]}"
 
       - name: Commit changes
