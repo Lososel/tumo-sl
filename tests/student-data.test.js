@@ -28,7 +28,7 @@ test('fromJson accepts positional rows and title-cases names', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Шошаев Алдияр', d: 'Понедельник', t: '10:30-12:30', c: 'Gulnaz', ex: 'Nazym',
-    stage: 'Самообучение', email: '', room: '', status: '', workshops: []
+    stage: 'Самообучение', email: '', room: '', status: '', stream: '', workshops: []
   });
 });
 
@@ -40,7 +40,7 @@ test('fromCsv maps Google Sheets headers, quotes and email column', () => {
   assert.strictEqual(recs.length, 1);
   assert.deepStrictEqual(recs[0], {
     n: 'Түлеу Нұрай Азаматқызы', d: 'Четверг', t: '14:30-16:30', c: 'Almas', ex: 'Gulim, Elmira',
-    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: '', status: '', workshops: []
+    stage: 'Самообучение', email: 'nurai.tuleu@tumo.kz', room: '', status: '', stream: '', workshops: []
   });
 });
 
@@ -299,4 +299,13 @@ test('upcoming workshop: the prerequisite activities and their status', () => {
   assert.deepStrictEqual([tl.current, tl.next.title], [null, 'Робототехника I']);
   assert.strictEqual(S.formatDateRange(S.workshopDates(w), 'ru'), '23 ноября – 17 декабря');
   assert.deepStrictEqual(S.fromJson({ students: [['A B', '', '', '', '', '', '', '', '', [['X', '', '', '', '', '', '']]]] })[0].workshops[0].activities, []);
+});
+
+test('fromJson keeps the stream of «6 ПОТОК» rows (field 11)', () => {
+  const [six, old] = S.fromJson({ students: [
+    ['Иван Петров', 'Понедельник', '10:30-12:30', 'Danel', '', 'Онбординг', '', '2 этаж, зона SL', '', [], '6'],
+    ['Анна Смирнова', 'Вторник', '14:30-16:30', 'Alen', '', 'Онбординг', '', '', '', []],
+  ] });
+  assert.equal(six.stream, '6');
+  assert.equal(old.stream, '');
 });

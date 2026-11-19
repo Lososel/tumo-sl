@@ -426,6 +426,7 @@
       email: cleanText(o.email).toLowerCase(),
       room: cleanText(o.room),
       status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
+      stream: cleanText(o.stream), // '6' for students from the separate «6 ПОТОК» sheet, else ''
       // Workshops from the workshop sheet: [{title, room, leader, time, start, end, changed}],
       // dates ISO 'YYYY-MM-DD' or ''. Sorted by start date.
       workshops: (Array.isArray(o.workshops) ? o.workshops : []).map(w => Array.isArray(w)
@@ -446,10 +447,10 @@
       .filter(a => a.name);
   }
 
-  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status, workshops]
+  // Positional row: [name, day, time, coach, exCoach, stage, email, room, status, workshops, stream?]
   function fromRow(r) {
     return makeRecord({ name: r[0], day: r[1], time: r[2], coach: r[3], exCoach: r[4], stage: r[5], email: r[6], room: r[7], status: r[8],
-                        workshops: r[9] });
+                        workshops: r[9], stream: r[10] });
   }
 
   const HEADER_ALIASES = {
