@@ -40,7 +40,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   («Понедельник / Вторник», «Четверг / Пятница», columns O–P); one tick = the SL day, stage «Самообучение»; the coach
   stays «Коуч» (no ex-coach, badge «самообучение»). No tick → «Онбординг».
 - Never publish phones, IIN, birth dates, parent details or non-`@tumo.world` emails.
-- The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git.
+- The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git. It is shown only on «6 поток» onboarding
+  cards (`PASSWORD_STREAMS = ['6']` in `index.html`; rows from the stream file carry field 11 `stream` = "6").
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).

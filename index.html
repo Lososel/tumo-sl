@@ -729,6 +729,8 @@
   // Shared first-login password of new TUMO accounts, shown on onboarding cards like in
   // tumo-onb-app. Set TEMP_PASSWORD in the Render dashboard; it is never stored in git.
   const TEMP_PASSWORD = ((window.SITE_CONFIG || {}).tempPassword || '').trim();
+  // …only for these onboarding streams (field «stream» of data/students.json): 4 / 5 поток already logged in.
+  const PASSWORD_STREAMS = ['6'];
 
   const I18N = {
     ru:{
@@ -1192,7 +1194,7 @@
         ${field(o.coachEmail, mail(email))}
         ${field(o.email, mail(r.email))}
       </div>
-      ${TEMP_PASSWORD ? `
+      ${TEMP_PASSWORD && PASSWORD_STREAMS.includes(r.stream) ? `
       <div class="pw-box">
         <div class="fact-label" id="pw-label-${index}">${o.password}</div>
         <div class="pw-row">

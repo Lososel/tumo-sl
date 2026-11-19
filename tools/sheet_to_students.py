@@ -786,6 +786,7 @@ def parse(tables, published=None, stats=None):
         cols = map_header(rows[0])
         onboarding = stream_of(tab) is not None
         extra = " · " in (tab or "")  # a tab of a separate stream file (--stream-file)
+        stream_no = stream_of(tab) if extra else None
         if "name" not in cols or ("schedule" if onboarding else "day") not in cols:
             problems.append(f"[{tab}] нет колонок «ФИО» / «{'Расписание' if onboarding else 'День SL'}» — вкладка пропущена")
             continue
@@ -873,6 +874,8 @@ def parse(tables, published=None, stats=None):
                 coach, ex = ex, ""
             rec = [name, day, time, coach, ex, stage,
                    email if TUMO_EMAIL_RE.match(email) else "", clean_ws(get(row, "room")), "", []]
+            if stream_no:  # remembered so main() can mark the row's stream (field 11) once duplicates are resolved
+                stats.setdefault("stream_of", {})[id(rec)] = stream_no
             confirmed = bool(tab_slot) and slot_from_text(get(row, "new_schedule")) == tab_slot
             by_key.setdefault(norm(name), []).append({"rec": rec, "where": where, "confirmed": confirmed,
                                                       "extra": extra})
@@ -994,6 +997,12 @@ def main():
     if args.dry_run:
         print("Dry-run: файл не записан.")
         return
+    # field 11 «stream»: set for students taken from a separate stream file («6 ПОТОК»); the page shows the
+    # temporary password only on those cards (PASSWORD_STREAMS in index.html)
+    stream_of_rec = stats.get("stream_of", {})
+    for s in students:
+        if id(s) in stream_of_rec and len(s) == 10:
+            s.append(stream_of_rec[id(s)])
     save_student_data(students, out)
     print(f"Записано: {out}")
 

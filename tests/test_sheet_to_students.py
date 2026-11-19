@@ -249,6 +249,12 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual(got["Позже Ученик"][8], "waitlist")
         self.assertEqual(got["Нет Мест"][8], "waitlist")
         self.assertEqual(got["Пятый Поток"][1:4], ["Вторник", "14:30-16:30", "Danel"])
+        # main() marks rows taken from the stream file with field 11 = the stream number (the page shows the
+        # temporary password only for it)
+        st = {}
+        parsed = sts.parse(sts.read_tables(raw) + [t for t in tables if len(t[1]) > 1], stats=st)[0]
+        marked = {r[0] for r in parsed if id(r) in st["stream_of"]}
+        self.assertEqual(marked, {"Шестой Поток"})
 
     def test_workshop_sheet_is_attached_by_full_name(self):
         import datetime
