@@ -47,7 +47,10 @@ class StudentsJsonTest(unittest.TestCase):
         data = ss.load_student_data()
         self.assertGreater(len(data), 1000)
         for rec in data:
-            self.assertEqual(len(rec), len(ss.STUDENT_FIELDS))
+            # field 11 «stream» = "6" only on rows from the «6 ПОТОК» file
+            self.assertIn(len(rec), (len(ss.STUDENT_FIELDS), len(ss.STUDENT_FIELDS) + 1))
+            if len(rec) > len(ss.STUDENT_FIELDS):
+                self.assertEqual(rec[10], "6")
             self.assertEqual(rec[0], ss.proper_case(rec[0]))
             if rec[8]:  # inactive / waitlist: name only
                 self.assertIn(rec[8], ("inactive", "waitlist"))
