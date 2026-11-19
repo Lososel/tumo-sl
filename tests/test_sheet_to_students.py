@@ -225,6 +225,14 @@ class SheetToStudentsTest(unittest.TestCase):
         with_5 = sts.parse(sts.read_tables(raw))[0]
         self.assertEqual(with_5[-1][:6], ["Пятый Поток", "Вторник", "14:30-16:30", "Danel", "", "Онбординг"])
 
+        # «5 поток»: the SL-day tick columns are named in the header row itself («Понедельник\nВторник», «Четверг\nПятница»)
+        h5 = header[:12] + ["", "   Понедельник\nВторник", "Четверг\nПятница"]
+        five = xlsx({"5 поток": [h5, kid("Пятый Тик", "Вторник, Пятница : 10:30–12:30", "Дана Телжан", "3 этаж, 3 WR", "") + [None, True],
+                                 kid("Пятый Без", "Вторник, Пятница : 10:30–12:30", "Danel", "", "") + [None, None]]})
+        got5 = {r[0]: r for r in sts.parse(sts.read_tables(five))[0]}
+        self.assertEqual(got5["Пятый Тик"][1:6], ["Пятница", "10:30-12:30", "Dana Telzhan", "", "Самообучение"])
+        self.assertEqual(got5["Пятый Без"][5], "Онбординг")
+
         # a separate stream file («6 ПОТОК»): every tab is a stream tab, even «ПНЧТ 1030» (looks like a main tab);
         # «(ЛИСТ ОЖИДАНИЯ НА 2027)» / «НЕТ МЕСТ» = waitlist, a plain «(лист ожидания)» attends; master rows win
         six = xlsx({"ПНЧТ 1030": [header,
