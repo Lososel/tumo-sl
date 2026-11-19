@@ -806,6 +806,13 @@ def parse(tables, published=None, stats=None):
             sub = [clean_ws(c).lower() if c is not None else "" for c in rows[1][d:d + 2]]
             if len(sub) == 2 and "понедельник" in sub[0] and "четверг" in sub[1]:
                 sl_ticks = (d, d + 1)
+        if onboarding and not sl_ticks:
+            # «5 поток»: the two tick columns carry the day names in the header row itself
+            head = [clean_ws(c).lower() if c is not None else "" for c in rows[0]]
+            for d in range(len(head) - 1):
+                if "понедельник" in head[d] and "четверг" in head[d + 1]:
+                    sl_ticks = (d, d + 1)
+                    break
 
         for line_no, row in enumerate(rows[1:], start=2):
             name = proper_case(fix_mixed_script(clean_ws(get(row, "name"))))
