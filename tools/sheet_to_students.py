@@ -544,7 +544,9 @@ def read_december_groups(raw, info=None, today=None):
     info = info or {}
     today = today or datetime.date.today()
     wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True, read_only=True)
-    ws = next((w for w in wb.worksheets if DECEMBER_TAB_RE.search(w.title)), None)
+    # the tab you edit is «Декабрь по группам»; copies like «Декабрь по группам (live)» are used only without it
+    tabs = [w for w in wb.worksheets if DECEMBER_TAB_RE.search(w.title)]
+    ws = next((w for w in tabs if w.title.strip().lower() == "декабрь по группам"), tabs[0] if tabs else None)
     if ws is None:
         return []
     rows = [list(r) for r in ws.iter_rows(values_only=True)]
