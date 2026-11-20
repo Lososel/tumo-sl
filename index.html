@@ -1307,11 +1307,7 @@
             <div class="fact-value">${escapeHtml(r.room)}</div>
           </div>` : ''}
         </div>
-        ${noCoach
-          ? `<div class="note warn">${t('noteWarn')}</div>`
-          : (onboarding || inWorkshop || fresh ? '' : (changed ? `<div class="note">${t('noteChanged')}</div>` : `<div class="note">${t('noteSame')}</div>`))
-        }
-        ${workshopSectionHtml(r) || (inWorkshop ? '' : `<div class="note info">${t('noteWorkshop')}</div>`)}
+        ${workshopSectionHtml(r)}
         ${group ? `
         <div class="group-block">
           <div class="group-qr" id="qr-${index}"></div>
