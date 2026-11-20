@@ -1277,7 +1277,7 @@
       const inWorkshop = !!wsTimeline(r, now, 14).current;
       card.innerHTML = `
         ${workshopBadge(r)
-          || `<span class="badge ${noCoach ? 'unknown' : (changed ? 'changed' : 'same')}">${noCoach ? t('badgeUnknown') : (changed ? t('badgeChanged') : (fresh ? t('badgeSL') : t('badgeSame')))}</span>`}
+          || `<span class="badge same">${t('badgeSL')}</span>`}
         <h3>${escapeHtml(r.n)}${headActionsHtml(r)}</h3>
         ${activeWorkshopHtml(r)}
         ${inWorkshop ? `<div class="ws-only" role="status">${t('ws').onlyWorkshop(StudentData.classResumes(r, now))}</div>` : ''}
