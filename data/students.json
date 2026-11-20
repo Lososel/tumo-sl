@@ -1,5 +1,5 @@
 {"fields":["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status", "workshops"],
-"updated":"2026-11-20T07:49:35+00:00",
+"updated":"2026-11-20T07:54:28+00:00",
 "students":[
 ["Аскерұлы Есбер","Понедельник","10:30-12:30","Gulnaz","Gulnaz","Самообучение","askeruly.esber@tumo.world","","",[["Робототехника I","2 этаж, WR 1","Бердиходжаев Адилбек","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Falling Bananas: The Beginning","Awarded"],["Falling Bananas: The End","Not Opened"],["Falling Bananas: The Middle","Working"]]]]],
 ["Алдияр Таласбаев","Понедельник","10:30-12:30","Gulnaz","Aruzhan","Самообучение","aldiyar.t@tumo.world","","",[]],
@@ -100,7 +100,7 @@
 ["Ардақ Арайлым Архатқызы","Четверг","10:30-12:30","Alinur","Elmira","Самообучение","ardak.araylym@tumo.world","","",[["Музыка II","3 этаж, WR 8","Жананов Нурасыл","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Consonance & Dissonance","Awarded"],["Music Genres","Awarded"],["Notes, Scales, Chords","Awarded"]]]]],
 ["Аблайхан Саятұлы","Четверг","10:30-12:30","Elmira","Dana Telzhan","Самообучение","ablaikhan.sayatuly@tumo.world","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
 ["Даулет Айзере Жарылқасынқызы","Четверг","10:30-12:30","Elmira","Dana Telzhan","Самообучение","aizere.daulet@tumo.world","","",[]],
-["Болат Сафия Әділқызы","Четверг","10:30-12:30","Elmira","Dana Akhmetova","Самообучение","safiya.bolat@tumo.world","","",[]],
+["Болат Сафия Әділқызы","Четверг","10:30-12:30","Elmira","Dana Akhmetova","Самообучение","safiya.bolat@tumo.world","","",[["Кинопроизводство I","3 этаж, WR 3","Жүнісбек Марғұлан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Movie Genres","Awarded"],["Staging, Blocking & Camera","Awarded"],["Storytelling Through Storyboards","Awarded"]]]]],
 ["Қасым Мансұр Ақанұлы","Четверг","10:30-12:30","Elmira","Dana Akhmetova","Самообучение","mansur.kassym@tumo.world","","",[]],
 ["Балтабай Амир","Четверг","10:30-12:30","Elmira","Dana Akhmetova","Самообучение","amir.baltabay@tumo.world","","",[]],
 ["Каймолдинова Карина Канатовна","Четверг","10:30-12:30","Elmira","Dana Kurak","Самообучение","","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
