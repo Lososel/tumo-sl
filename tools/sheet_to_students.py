@@ -583,7 +583,9 @@ def read_december_groups(raw, info=None, today=None):
                 waitlist = bool(WAITLIST_RE.search(cell(j, c + 4)))
                 user = cell(j, c + 1).lower()
                 email = f"{user}@tumo.world" if re.fullmatch(r"[a-z0-9._%+-]+", user) else ""
-                out.append({"where": f"[{ws.title}:{j + 1}]", "name": "", "email": email, "latin_name": name,
+                # no username and a Cyrillic name: match it like the master sheet's own names
+                cyr = "" if email or not re.search(r"[А-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]", name) else name
+                out.append({"where": f"[{ws.title}:{j + 1}]", "name": cyr, "email": email, "latin_name": name,
                             "coach": cell(j, c + 3), "title": t, "room": room, "leader": leader,
                             "time": f"{days[0]}, {days[1]} {h:02d}:{mm}–{h + 2:02d}:{mm}",
                             "start": day0.isoformat(), "end": end.isoformat(), "changed": "",

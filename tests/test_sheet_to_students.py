@@ -464,6 +464,12 @@ class SheetToStudentsTest(unittest.TestCase):
         students = [rec("Петров Иван Сергеевич", "ivan.petrov@tumo.world"), rec("Кумисбек Абай Ерланұлы"),
                     rec("Смирнова Анна")]
         self.assertEqual(sts.attach_workshops(students, [r for r in rows if not r["waitlist"]]), [])
+        # a row typed in Cyrillic without a username is matched by the name, like the master sheet
+        cyr = dict([r for r in rows if r["latin_name"] == "Ivan Petrov"][0], email="", name="Смирнова Анна",
+                   latin_name="Смирнова Анна")
+        anna = rec("Смирнова Анна")
+        self.assertEqual(sts.attach_workshops([anna], [cyr]), [])
+        self.assertEqual(len(anna[9]), 1)
         self.assertEqual([s[9][0][0] for s in students], ["Робототехника I", "Робототехника I", "Music II"])
         # on a waiting list anywhere: no upcoming workshop, even with an enrollment in another group
         wait = rec("Ингов Вэйт", "wait.ing@tumo.world")
