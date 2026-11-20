@@ -247,7 +247,7 @@ class SheetToStudentsTest(unittest.TestCase):
         self.assertEqual(got["Шестой Поток"][:9], ["Шестой Поток", "Понедельник", "10:30-12:30", "Danel", "", "Онбординг",
                                                    "", "2 этаж, зона SL", ""])
         self.assertEqual(got["Позже Ученик"][8], "waitlist")
-        self.assertEqual(got["Нет Мест"][8], "waitlist")
+        self.assertEqual(got["Нет Мест"][8], "noseats")
         self.assertEqual(got["Пятый Поток"][1:4], ["Вторник", "14:30-16:30", "Danel"])
         # main() marks rows taken from the stream file with field 11 = the stream number (the page shows the
         # temporary password only for it)
