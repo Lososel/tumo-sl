@@ -1,5 +1,5 @@
 {"fields":["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status", "workshops"],
-"updated":"2026-11-20T10:14:15+00:00",
+"updated":"2026-11-20T10:19:12+00:00",
 "students":[
 ["Аскерұлы Есбер","Понедельник","10:30-12:30","Gulnaz","Gulnaz","Самообучение","askeruly.esber@tumo.world","","",[["Робототехника I","2 этаж, WR 1","Бердиходжаев Адилбек","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Falling Bananas: The Beginning","Awarded"],["Falling Bananas: The End","Not Opened"],["Falling Bananas: The Middle","Working"]]]]],
 ["Алдияр Таласбаев","Понедельник","10:30-12:30","Gulnaz","Aruzhan","Самообучение","aldiyar.t@tumo.world","","",[]],
@@ -36,6 +36,7 @@
 ["Төлеухан Абдухаким Бақытбекұлы","Понедельник","10:30-12:30","Elmira","Elmira","Самообучение","abdurakim.toleukhan@tumo.world","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
 ["Жарқын Мұхаммедали Жанатұлы","","","","","Самообучение","","","inactive",[]],
 ["Бакирова Айзере Ержанбекқызы","Понедельник","10:30-12:30","Elmira","Akbota","Самообучение","aizere.bakirova@tumo.world","","",[]],
+["Борамбай Альхом Жанболатұлы","Понедельник","10:30-12:30","Elmira","Akbota (Akhmet)","Самообучение","","","",[["Робототехника I","2 этаж, WR 1","Бердиходжаев Адилбек","Вт, Пт 10:30–12:30","2026-11-24","2026-12-20","",[["Falling Bananas: The Beginning","Awarded"],["Falling Bananas: The End","Awarded"],["Falling Bananas: The Middle","Awarded"]]]]],
 ["Төлеубек Айтуар Азаматұлы","Понедельник","10:30-12:30","Elmira","Akhmet","Самообучение","aytuar.toleubek@tumo.world","","",[]],
 ["Мухамбетов Куангали Казиханович","Понедельник","10:30-12:30","Almas","Almas","Самообучение","kuangali.mukhambetov@tumo.world","","",[]],
 ["Турабаев Ансар Айтказыевич","Понедельник","10:30-12:30","Almas","Almas","Самообучение","ansar.turabayev@tumo.world","","",[["Программирование I","3 этаж, WR 14","Ахметова Дана","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["JavaScript Math is Weird","Awarded"],["JavaScript: Control Flow","Awarded"],["Programming Basics with JavaScript","Awarded"]]]]],
@@ -1152,7 +1153,6 @@
 ["Сабыр Даниал Дауренұлы","Пятница","10:30-12:30","Elmira","Akbota","Самообучение","danial.sabyr@tumo.world","","",[]],
 ["Әбдрашит Асанәлі Абайұлы","Пятница","10:30-12:30","Elmira","Akbota (Dana Telzhan)","Самообучение","asanali.abdrashit@tumo.world","","",[]],
 ["Рахиб Темірлан Берекеұлы","Пятница","10:30-12:30","Elmira","Akbota (Nazym)","Самообучение","damelya.kabenova1@tumo.world","","",[]],
-["Борамбай Альхом Жанболатұлы","Пятница","10:30-12:30","Elmira","Akbota (Akhmet)","Самообучение","","","",[["Робототехника I","2 этаж, WR 1","Бердиходжаев Адилбек","Вт, Пт 10:30–12:30","2026-11-24","2026-12-20","",[["Falling Bananas: The Beginning","Awarded"],["Falling Bananas: The End","Awarded"],["Falling Bananas: The Middle","Awarded"]]]]],
 ["Райбаев Сұлтан Мақсұтұлы","Пятница","10:30-12:30","Elmira","Elmira","Самообучение","","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Вт, Пт 10:30–12:30","2026-11-24","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
 ["Жапарова Хадиджа Шалкаровна","Пятница","10:30-12:30","Elmira","Elmira","Самообучение","khadidzha.zhaparova@tumo.world","","",[]],
 ["Тілеубек Амина Арманқызы","Пятница","10:30-12:30","Elmira","Dana Ahmetova","Самообучение","amina.tileubek@tumo.world","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Вт, Пт 10:30–12:30","2026-11-24","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
