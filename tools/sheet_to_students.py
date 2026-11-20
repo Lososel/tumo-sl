@@ -80,12 +80,15 @@ PAUSED_RE = re.compile(
 )
 INACTIVE_RE = re.compile(DROPPED_RE.pattern + "|" + PAUSED_RE.pattern, re.I)  # any non-active note
 INACTIVE, WAITLIST = "inactive", "waitlist"
-STATUS_RANK = {"": 0, WAITLIST: 1, INACTIVE: 2}  # a student in several rows: the most active wins
+NOSEATS = "noseats"  # «НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ»: on the waiting list for a seat (card: «Вы в листе ожидания»)
+STATUS_RANK = {"": 0, WAITLIST: 1, NOSEATS: 1, INACTIVE: 2}  # a student in several rows: the most active wins
 
 
 def note_status(text):
     if DROPPED_RE.search(text):
         return INACTIVE
+    if NO_SEATS_RE.search(text):
+        return NOSEATS
     if PAUSED_RE.search(text):
         return WAITLIST
     return ""
@@ -839,15 +842,18 @@ def parse(tables, published=None, stats=None):
                     if i < len(row) and row[i]:
                         status = note_status(str(row[i]))
                         if status:
-                            stats["notes_" + status] += 1
+                            stats["notes_inactive" if status == INACTIVE else "notes_waitlist"] += 1
                             break
                 if not status and onboarding:
                     # «… 16:30–18:30 (ЛИСТ ОЖИДАНИЯ НА 2027)» or «Коуч: НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ»: waiting for a
                     # later period. A plain «(лист ожидания)» is only the slot first requested: attends now.
                     sched, coach_cell = clean_ws(get(row, "schedule")), clean_ws(get(row, "coach"))
-                    if note_status(sched) == WAITLIST or NO_SEATS_RE.search(coach_cell):
+                    if NO_SEATS_RE.search(coach_cell) or note_status(sched) == NOSEATS:
+                        status = NOSEATS
+                    elif note_status(sched) == WAITLIST:
                         status = WAITLIST
-                        stats["notes_" + status] += 1
+                    if status:
+                        stats["notes_waitlist"] += 1
             if status:
                 # Only the name: the card says «свяжитесь с нами», no schedule/coach/email.
                 rec = [name, "", "", "", "", stage, "", "", status, []]
@@ -988,7 +994,7 @@ def main():
     onboarding = sum(1 for s in active if s[5] == ONBOARDING_STAGE)
     print(f"Учеников: {len(students)} — активных: {len(active)} (самообучение: {len(active) - onboarding}, "
           f"онбординг: {onboarding}), неактивных: {sum(1 for s in students if s[8] == INACTIVE)}, "
-          f"в листе ожидания: {sum(1 for s in students if s[8] == WAITLIST)}; проблем: {len(problems)}")
+          f"в листе ожидания: {sum(1 for s in students if s[8] in (WAITLIST, NOSEATS))}; проблем: {len(problems)}")
     print(f"Строки по статусу — неактивные: красная заливка {stats['red']}, отметка в примечаниях "
           f"{stats['notes_inactive']}; лист ожидания: фиолетовая заливка {stats['purple']}, отметка в "
           f"примечаниях {stats['notes_waitlist']}")

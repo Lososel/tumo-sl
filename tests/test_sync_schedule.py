@@ -53,7 +53,7 @@ class StudentsJsonTest(unittest.TestCase):
                 self.assertEqual(rec[10], "6")
             self.assertEqual(rec[0], ss.proper_case(rec[0]))
             if rec[8]:  # inactive / waitlist: name only
-                self.assertIn(rec[8], ("inactive", "waitlist"))
+                self.assertIn(rec[8], ("inactive", "waitlist", "noseats"))
                 self.assertEqual(rec[1:5] + rec[6:8], ["", "", "", "", "", ""])
                 self.assertEqual(rec[9], [])
                 continue

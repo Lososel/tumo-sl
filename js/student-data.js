@@ -425,7 +425,7 @@
       stage: cleanText(o.stage) || DEFAULT_STAGE,
       email: cleanText(o.email).toLowerCase(),
       room: cleanText(o.room),
-      status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row)
+      status: cleanText(o.status).toLowerCase(), // '' | 'inactive' (red row) | 'waitlist' (dark purple row) | 'noseats' («НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ»)
       stream: cleanText(o.stream), // '6' for students from the separate «6 ПОТОК» sheet, else ''
       // Workshops from the workshop sheet: [{title, room, leader, time, start, end, changed}],
       // dates ISO 'YYYY-MM-DD' or ''. Sorted by start date.

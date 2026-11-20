@@ -26,7 +26,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - **«6 ПОТОК» is its own file** (Drive `19Q8pVsaqKuOWrx4bbR0lv9CcauLKL2hXs5qZE0iRcLQ`, workflow var
   `STREAM6_SHEET_FILE_ID`, `--stream-file 6=FILE`): one tab per slot («ПН/ЧТ 10:30» …), same columns as «4 поток»;
   every tab is read as onboarding «6 поток · <tab>» (empty tabs skipped). «Расписание» «(ЛИСТ ОЖИДАНИЯ НА 2027)» /
-  «НА 2026-2027» and «Коуч» «НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ» → waitlist; a plain «(лист ожидания)» attends. A student
+  «НА 2026-2027» → waitlist; «НЕТ МЕСТ - ЛИСТ ОЖИДАНИЯ» (in «Коуч» or a notes column) → status `noseats`, card
+  «Вы в листе ожидания. Ожидайте обновления информации о вашем месте в TUMO или свяжитесь с нами через WhatsApp.»; a plain «(лист ожидания)» attends. A student
   also active in the master sheet keeps the master sheet's row.
 - **«4 поток» → self-learning (temporary, until those students are moved into the main tabs):** its «День SL»
   is two tick columns sub-headed «Понедельник / Вторник» and «Четверг / Пятница». One tick + the pair in
