@@ -34,7 +34,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   «Самообучение» with the SL card. No tick → still «Онбординг»; both ticks → «Онбординг» + a log line. With no
   ex-coach the SL card shows the badge «самообучение» and no «Коуч остался прежним» note.
   Coach: «Новый коуч» («X Support if needed» / «X Support must» = X only supports, the coach stays the
-  onboarding coach; «Aruzhan Kh» = Аружан Хамзина) with «Eх-Коуч OB» (the onboarding coach) as ex-coach → badge «новый коуч»; no «Новый коуч» →
+  onboarding coach; «Aruzhan Kh» = Аружан Хамзина) with «Eх-Коуч OB» (the onboarding coach) as ex-coach; no «Новый коуч» →
   the onboarding coach, no ex-coach.
 - **«5 поток» → self-learning the same way:** its tick columns have the day pairs in the header row itself
   («Понедельник / Вторник», «Четверг / Пятница», columns O–P); one tick = the SL day, stage «Самообучение»; the coach
@@ -44,7 +44,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   cards (`PASSWORD_STREAMS = ['6']` in `index.html`; rows from the stream file carry field 11 `stream` = "6").
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
 - Cards carry no grey notes («Коуч остался прежним…», «Коуч изменился…», «Коуч … уточняется», the workshop-email hint);
-  status is shown by the badges at the top («скоро новый воркшоп», «онбординг», «самообучение», «новый коуч»).
+  the badge at the top is only the stage («самообучение», «онбординг») or «скоро новый воркшоп» — no «новый коуч» / «коуч без изменений» / «уточняется».
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).
 - **Workshops: the platform export («Лист3» in «Workshops 26.10») is the one source of truth.** Found by its
