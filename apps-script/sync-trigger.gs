@@ -1,6 +1,6 @@
 /**
  * Starts the site sync (GitHub Actions «Sync students from master sheet») as soon as
- * the master sheet or «6 ПОТОК» changes. GitHub runs the workflow's own schedule only
+ * the master sheet, «6 ПОТОК» or «Декабрь по группам» changes. GitHub runs the workflow's own schedule only
  * every few hours, so this script checks the files' «last modified» time every few minutes
  * and calls the workflow when one of them changed.
  *
@@ -15,6 +15,7 @@
 const FILES = {
   main: '1qcmLsXYRvu6Pf0ghM17V0dvq3sUuBDqm',     // MAIN_ОБЩИЙ_… (master sheet)
   stream6: '19Q8pVsaqKuOWrx4bbR0lv9CcauLKL2hXs5qZE0iRcLQ', // 6 ПОТОК
+  december: '12ElbRcHplgALfzzEXprFCAzjE51z19zrUH7zBiBXmCc', // Actual Elmira Attendance all («Декабрь по группам»)
 };
 const REPO = 'Lososel/tumo-sl';
 const WORKFLOW = 'sync-students.yml';

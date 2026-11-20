@@ -113,7 +113,7 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 
 ## Sync timing
 - GitHub runs the workflow's `*/15` schedule only every few hours. `apps-script/sync-trigger.gs` (a Google Apps
-  Script, run from the account that can open the files) checks the master sheet's and «6 ПОТОК»'s «last modified»
+  Script, run from the account that can open the files) checks the master sheet's, «6 ПОТОК»'s and the «Декабрь по группам» file's «last modified»
   every 5 minutes and starts the workflow (`workflow_dispatch`) when one changed. Its GitHub token (fine-grained,
   this repo, Actions: write) is only in the script's properties, never in git. Add more files to `FILES` there.
 
