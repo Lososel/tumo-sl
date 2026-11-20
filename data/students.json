@@ -1,5 +1,5 @@
 {"fields":["name", "day", "time", "coach", "exCoach", "stage", "email", "room", "status", "workshops"],
-"updated":"2026-11-20T07:54:28+00:00",
+"updated":"2026-11-20T07:57:27+00:00",
 "students":[
 ["Аскерұлы Есбер","Понедельник","10:30-12:30","Gulnaz","Gulnaz","Самообучение","askeruly.esber@tumo.world","","",[["Робототехника I","2 этаж, WR 1","Бердиходжаев Адилбек","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Falling Bananas: The Beginning","Awarded"],["Falling Bananas: The End","Not Opened"],["Falling Bananas: The Middle","Working"]]]]],
 ["Алдияр Таласбаев","Понедельник","10:30-12:30","Gulnaz","Aruzhan","Самообучение","aldiyar.t@tumo.world","","",[]],
@@ -105,7 +105,7 @@
 ["Балтабай Амир","Четверг","10:30-12:30","Elmira","Dana Akhmetova","Самообучение","amir.baltabay@tumo.world","","",[]],
 ["Каймолдинова Карина Канатовна","Четверг","10:30-12:30","Elmira","Dana Kurak","Самообучение","","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
 ["Болат Нұрсана Қобыланқызы","Четверг","10:30-12:30","Elmira","Dana Kurak","Самообучение","","","",[]],
-["Жұматаев Жәңгірхан Санжарұлы","Четверг","10:30-12:30","Elmira","Gulim","Самообучение","","","",[["3D-моделирование II","3 этаж, WR 5","Даулетбай Ризахмет","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Brushes and 3D Sculpting","Not Opened"],["Digital Sculpting","Awarded"],["Masking","Rejected"]]],["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
+["Жұматаев Жәңгірхан Санжарұлы","Четверг","10:30-12:30","Elmira","Gulim","Самообучение","","","",[["Разработка Игр I","3 этаж, WR 4","Ертаев Рамазан","Пн, Чт 10:30–12:30","2026-11-23","2026-12-20","",[["Level Design: Prototype","Awarded"],["Lighting for Games","Awarded"],["Mood in Games","Awarded"]]]]],
 ["Қайрат Мажит Азаматұлы","Четверг","10:30-12:30","Elmira","Nazym (Akhmet)","Самообучение","mazhit.kayrat@tumo.world","","",[]],
 ["Мирас Зейнулла","Четверг","10:30-12:30","Elmira","Elmira","Самообучение","","","",[]],
 ["Шагир Мұхаммедали Салауатұлы","Четверг","10:30-12:30","Almas","Almas","Самообучение","muhammedali.s@tumo.world","","",[]],
