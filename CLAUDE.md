@@ -43,6 +43,8 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
 - The temporary password is only in the Render env var `TEMP_PASSWORD`, never in git. It is shown only on «6 поток» onboarding
   cards (`PASSWORD_STREAMS = ['6']` in `index.html`; rows from the stream file carry field 11 `stream` = "6").
 - Self-learning cards don't show the student's TUMO email; onboarding cards do.
+- Cards carry no grey notes («Коуч остался прежним…», «Коуч изменился…», «Коуч … уточняется», the workshop-email hint);
+  status is shown by the badges at the top («скоро новый воркшоп», «онбординг», «самообучение», «новый коуч»).
 - Coach names are shown in Cyrillic on every card: Russian spelling on the RU page, Kazakh on
   the KZ page (`COACH_NAMES` in `index.html`; add new coaches there).
 - **Workshops: the platform export («Лист3» in «Workshops 26.10») is the one source of truth.** Found by its
