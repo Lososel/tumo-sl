@@ -103,9 +103,9 @@ with `tools/sheet_to_students.py`. Tests: `python3 -m unittest discover -s tests
   upcoming workshop at all (`drop_waitlisted`), even if enrolled in another group. Dates from the tab's first cell «Декабрь
   (23.11–20.12)» (Вт/Пт a day later). Matched by username@tumo.world, else by the Latin name; activities from
   «Upcoming»; room/leader/title from «Кабинеты и лидеры». The link column is never published.
-- **The site shows only the upcoming workshop** (`SHOW_WORKSHOPS = 'next'` in `index.html`): the «Следующий
-  воркшоп» block with its «скоро» alert and badge; no running workshop, no «Воркшоп» stage, the SL schedule stays.
-  `false` hides all workshop blocks, `true` shows current and next.
+- **The site shows the running and the upcoming workshop** (`SHOW_WORKSHOPS = true` in `index.html`, since the
+  December cycle started 23–24.11). `'next'` shows only the upcoming one (no running workshop, no «Воркшоп» stage,
+  the SL schedule stays); `false` hides all workshop blocks.
 - Card: «Текущий воркшоп» (running today) and «Следующий воркшоп» (earliest not started);
   alert + badge when the next one starts within 14 days or one changed in the last 14 days.
 - A workshop lasts one month (no end date → start + 1 month). Dates shown as the first–last
